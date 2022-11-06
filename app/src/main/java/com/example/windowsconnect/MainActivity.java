@@ -103,8 +103,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         if(_udpClient == null){
             _btnDisconnect.setText("Connect");
-
-
             new Thread(){
                 @Override
                 public void run() {
@@ -118,7 +116,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                    }
                 }
             }.start();
-
         }else{
             _btnDisconnect.setText("Disconnect");
         }

@@ -76,6 +76,10 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
     @Override
     public void addHost(Host host) {
+        for (Host h : hosts) {
+            if(h.localIP.equals(host.localIP)) return;
+        }
+
         hosts.add(host);
         handler.sendMessage(new Message());
     }
