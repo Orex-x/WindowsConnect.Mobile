@@ -43,9 +43,6 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
         _listener = listener;
     }
 
-
-
-
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -67,8 +64,6 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
                 adapter.notifyDataSetChanged();
             }
         };
-
-        AutoFinderHost.Find(Settings.getDevice());
 
         return v;
     }

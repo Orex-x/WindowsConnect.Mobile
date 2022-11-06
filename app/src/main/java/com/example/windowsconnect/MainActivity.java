@@ -25,6 +25,7 @@ import com.example.windowsconnect.interfaces.UdpReceiveMainActivityListener;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
+import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.CaptureAct;
 import com.example.windowsconnect.service.Settings;
 import com.example.windowsconnect.service.TCPClient;
@@ -102,6 +103,22 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         if(_udpClient == null){
             _btnDisconnect.setText("Connect");
+
+
+            new Thread(){
+                @Override
+                public void run() {
+                   while (_udpClient == null){
+                       AutoFinderHost.Find(Settings.getDevice());
+                       try {
+                           Thread.sleep(5000);
+                       } catch (InterruptedException e) {
+                           e.printStackTrace();
+                       }
+                   }
+                }
+            }.start();
+
         }else{
             _btnDisconnect.setText("Disconnect");
         }
