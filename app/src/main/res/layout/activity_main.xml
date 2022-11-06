@@ -14,7 +14,7 @@
         android:layout_marginRight="16dp"
         android:layout_marginLeft="16dp"
         android:text="Host: HOME-DANA"
-        android:textSize="26dp"
+        android:textSize="24dp"
         app:layout_constraintTop_toTopOf="parent" />
 
     <LinearLayout

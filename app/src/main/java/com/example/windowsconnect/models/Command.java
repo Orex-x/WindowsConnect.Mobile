@@ -6,6 +6,7 @@ public enum Command{
     sleep,
     requestAddDevice,
     setHostInfo,
-    setWallpaper
+    setWallpaper,
+    playStepasSound,
 }
 

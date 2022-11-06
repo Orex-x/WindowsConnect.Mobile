@@ -52,6 +52,10 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     private Handler handler;
 
+    //пасхалка, чтобы вызвать звук залипания клавиш (для степы),
+    // надо нажать на название хоста 3 раза
+    private int countClick = 0;
+
 
     FrameLayout frame;
     private ListDeviceFragment listDeviceFragment;
@@ -70,6 +74,16 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _imageView = findViewById(R.id.imageView);
 
         frame = findViewById(R.id.frame);
+
+        _txtHostName.setOnClickListener(view ->{
+            if(countClick++ == 3){
+                countClick = 0;
+                if(_udpClient != null){
+                    String json = CommandHelper.createCommand(Command.playStepasSound, "");
+                    _udpClient.sendMessage(json);
+                }
+            }
+        });
 
         handler = new Handler() {
             @Override
@@ -173,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _udpClient.sendMessage(json);
         frame.setVisibility(View.GONE);
         _btnDisconnect.setText("Disconnect");
-        _txtHostName.setText("Host name: " + host.getName());
+        _txtHostName.setText("Host: " + host.getName());
         Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
     }
 
