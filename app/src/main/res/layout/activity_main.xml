@@ -7,6 +7,7 @@
     tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/txtHostName"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="6dp"
@@ -32,7 +33,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
-            tools:srcCompat="@tools:sample/avatars" />
+            android:src="@drawable/wallpaper" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -66,7 +67,7 @@
             </LinearLayout>
 
             <Button
-                android:id="@+id/btnDisconnect"
+                android:id="@+id/btnDisconnectConnect"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
                 android:layout_marginRight="16dp"
@@ -76,6 +77,19 @@
         </LinearLayout>
 
     </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/frame"
+        android:layout_width="match_parent"
+        android:layout_height="400dp"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+    </FrameLayout>
 
     <SeekBar
         android:id="@+id/seekBarVolume"
@@ -91,9 +105,9 @@
         android:id="@+id/txtVolume"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Volume: 0"
         android:layout_marginLeft="20dp"
         android:layout_marginBottom="10dp"
+        android:text="Volume: 0"
         android:textSize="20sp"
         app:layout_constraintBottom_toTopOf="@+id/seekBarVolume"
         app:layout_constraintStart_toStartOf="@+id/seekBarVolume" />

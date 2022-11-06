@@ -2,69 +2,117 @@ package com.example.windowsconnect;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
+
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Base64;
+import android.view.View;
 import android.widget.Button;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
+import com.example.windowsconnect.interfaces.UdpReceiveMainActivityListener;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
-import com.example.windowsconnect.models.Device;
 import com.example.windowsconnect.models.Host;
+import com.example.windowsconnect.service.CaptureAct;
+import com.example.windowsconnect.service.Settings;
+import com.example.windowsconnect.service.TCPClient;
+import com.example.windowsconnect.service.UDPClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
+
+import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Date;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, UdpReceiveMainActivityListener {
 
     private Button _btnDisconnect;
     private ImageButton _btnSleep;
     private ImageButton _btnWakeUp;
+    private ImageView _imageView;
 
     private UDPClient _udpClient;
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
-    private Device _device;
+    private TextView _txtHostName;
     private Host _host;
 
-    @Override
-    protected void onDestroy() {
-        _udpClient.close();
-        super.onDestroy();
-    }
+    private Handler handler;
 
+
+    FrameLayout frame;
+    private ListDeviceFragment listDeviceFragment;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
-        _device = new Device(android.os.Build.MODEL, new Date());
-
-        _btnDisconnect = findViewById(R.id.btnDisconnect);
+        _btnDisconnect = findViewById(R.id.btnDisconnectConnect);
         _btnSleep = findViewById(R.id.btnSleep);
         _btnWakeUp = findViewById(R.id.btnWakeUp);
         _seekBarVolume = findViewById(R.id.seekBarVolume);
         _txtVolume = findViewById(R.id.txtVolume);
+        _txtHostName = findViewById(R.id.txtHostName);
+        _imageView = findViewById(R.id.imageView);
 
-        if(_udpClient == null) scanCode();
+        frame = findViewById(R.id.frame);
+
+        handler = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                _imageView.setImageBitmap((Bitmap) msg.obj);
+            }
+        };
+
+        UDPClient.Receive(Settings.LISTEN_PORT);
+        TCPClient.setUdpReceiveMainActivityListener(this);
+        TCPClient.received();
+
+        if (listDeviceFragment == null) {
+            listDeviceFragment = new ListDeviceFragment(this);
+        }
+
+        if(_udpClient == null){
+            _btnDisconnect.setText("Connect");
+        }else{
+            _btnDisconnect.setText("Disconnect");
+        }
 
         _btnSleep.setOnClickListener(v -> {
-            _udpClient.sendMessage(CommandHelper.createCommand(Command.sleep, ""));
+          //  _udpClient.sendMessage(CommandHelper.createCommand(Command.sleep, ""));
         });
 
         _btnWakeUp.setOnClickListener(v -> {
-            _udpClient.WakeUp();
+           // _udpClient.WakeUp();
         });
 
         _btnDisconnect.setOnClickListener(v -> {
-            _udpClient.close();
+            if(_udpClient == null){
+                frame.setVisibility(View.VISIBLE);
+                FragmentManager fragmentManager = getSupportFragmentManager();
+                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+                fragmentTransaction.replace(R.id.frame, listDeviceFragment, "LIST_FRAGMENT_TAG");
+                fragmentTransaction.commit();
+               // scanCode();
+            }else{
+                _udpClient = null;
+                _btnDisconnect.setText("Connect");
+            }
+
         });
 
         _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -104,18 +152,37 @@ public class MainActivity extends AppCompatActivity {
            try {
                ObjectMapper mapper = new ObjectMapper();
                Map<String, Object> map = mapper.readValue(result.getContents(), Map.class);
+
                String ip = map.get("ip").toString();
+               int hostPort = Integer.parseInt(map.get("hostPort").toString());
                String macAddress = map.get("macAddress").toString();
                String name = map.get("name").toString();
-               int port = Integer.parseInt(map.get("port").toString());
-               _host = new Host(port, ip, name, macAddress);
-               _udpClient = new UDPClient(_host);
-               String json = CommandHelper.createCommand(Command.addDevice, _device);
-               _udpClient.sendMessage(json);
-               Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+
+               _host = new Host(hostPort, ip, name, macAddress);
+               connectHost(_host);
            } catch (IOException e) {
                e.printStackTrace();
            }
        }
     });
+
+    @Override
+    public void connectHost(Host host) {
+        _udpClient = new UDPClient(host.localIP, host.port);
+        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice());
+        _udpClient.sendMessage(json);
+        frame.setVisibility(View.GONE);
+        _btnDisconnect.setText("Disconnect");
+        _txtHostName.setText("Host name: " + host.getName());
+        Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void setWallPaper(String data) {
+        byte[] x = Base64.decode(data, Base64.DEFAULT);  //convert from base64 to byte array
+        Bitmap bmp = BitmapFactory.decodeByteArray(x,0,x.length);
+        Message message = new Message();
+        message.obj = bmp;
+        handler.sendMessage(message);
+    }
 }

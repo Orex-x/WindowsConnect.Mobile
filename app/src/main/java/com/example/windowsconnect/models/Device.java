@@ -4,6 +4,7 @@ import java.util.Date;
 
 public class Device {
     public String Name;
+    public String IP;
     public Date DateConnect;
 
     public Device() {
@@ -13,8 +14,9 @@ public class Device {
         Name = name;
     }
 
-    public Device(String name, Date dateConnect) {
+    public Device(String name, String IP, Date dateConnect) {
         Name = name;
+        this.IP = IP;
         DateConnect = dateConnect;
     }
 }

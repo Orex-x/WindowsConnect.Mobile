@@ -1,4 +1,4 @@
-package com.example.windowsconnect;
+package com.example.windowsconnect.service;
 
 import com.journeyapps.barcodescanner.CaptureActivity;
 
