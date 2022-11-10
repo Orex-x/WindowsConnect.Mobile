@@ -13,7 +13,7 @@
         android:layout_marginTop="6dp"
         android:layout_marginRight="16dp"
         android:layout_marginLeft="16dp"
-        android:text="Host: HOME-DANA"
+        android:text="Host: Unknown"
         android:textSize="24dp"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -91,6 +91,7 @@
 
     </FrameLayout>
 
+
     <SeekBar
         android:id="@+id/seekBarVolume"
         android:layout_width="match_parent"
@@ -111,6 +112,17 @@
         android:textSize="20sp"
         app:layout_constraintBottom_toTopOf="@+id/seekBarVolume"
         app:layout_constraintStart_toStartOf="@+id/seekBarVolume" />
+
+    <ImageButton
+        android:id="@+id/btnPrint"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:src="@drawable/printer"
+        android:background="@null"
+        android:layout_marginLeft="10dp"
+        android:layout_marginTop="10dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

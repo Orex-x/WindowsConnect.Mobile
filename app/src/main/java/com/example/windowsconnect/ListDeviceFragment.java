@@ -9,6 +9,7 @@ import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
@@ -32,6 +33,7 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
     ArrayList<Host> hosts = new ArrayList<>();
     ListView listView;
+    Button btnScanQR;
     HostAdapter adapter;
     private ListDeviceFragmentListener _listener;
 
@@ -50,12 +52,14 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
 
         listView = v.findViewById(R.id.recyclerView);
+        btnScanQR = v.findViewById(R.id.btnScanQR);
         progress = v.findViewById(R.id.progress);
         adapter = new HostAdapter(getContext(), R.layout.host_item ,hosts, this);
         listView.setAdapter(adapter);
 
         UDPClient.setUdpReceiveListDeviceFragmentListener(this);
 
+        btnScanQR.setOnClickListener(view -> _listener.scanQR());
 
         handler = new Handler() {
             @Override

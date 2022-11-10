@@ -8,9 +8,18 @@
     <ListView
         android:id="@+id/recyclerView"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
+        android:layout_height="match_parent"
+        android:layout_marginBottom="60dp">
     </ListView>
+
+    <Button
+        android:id="@+id/btnScanQR"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:layout_gravity="bottom"
+        android:text="Scan QR"
+        android:layout_marginLeft="20dp"
+        android:layout_marginRight="20dp"/>
 
     <ProgressBar
         android:id="@+id/progress"
@@ -18,6 +27,4 @@
         android:layout_gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content" />
-
-
 </FrameLayout>

@@ -8,5 +8,6 @@ public enum Command{
     setHostInfo,
     setWallpaper,
     playStepasSound,
+    saveFile,
 }
 

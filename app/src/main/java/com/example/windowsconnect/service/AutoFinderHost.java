@@ -4,12 +4,10 @@ import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Device;
 
-import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
-import java.util.logging.Handler;
 
 public class AutoFinderHost {
     public static void Find(Device device){
@@ -35,7 +33,7 @@ class MulticastPublisher extends Thread{
             buf = message.getBytes();
 
             DatagramPacket packet
-                    = new DatagramPacket(buf, buf.length, group, Settings.SEND_PORT);
+                    = new DatagramPacket(buf, buf.length, group, Settings.UDP_SEND_PORT);
             socket.send(packet);
             socket.close();
         }catch (Exception e){
@@ -52,7 +50,7 @@ class MulticastReceiver extends Thread {
 
     public void run() {
         try{
-            socket = new MulticastSocket(5003);
+            socket = new MulticastSocket(Settings.UDP_LISTEN_PORT);
             InetAddress group = InetAddress.getByName("230.0.0.0");
             socket.joinGroup(group);
             while (true) {
