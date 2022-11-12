@@ -13,6 +13,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -46,9 +47,11 @@ public class TCPClient {
             super.run();
             Socket clientSocket = null;
             OutputStream out = null;
+            byte[] packet_length  = ByteBuffer.allocate(4).putInt(data.length).array();
             try {
                 clientSocket = new Socket (ip, Settings.TCP_SEND_PORT);
                 out = clientSocket.getOutputStream();
+                out.write(packet_length, 0, packet_length.length);
                 out.write(data, 0, data.length);
             } catch (IOException e) {
                 e.printStackTrace();
