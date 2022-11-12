@@ -2,7 +2,8 @@ package com.example.windowsconnect.models;
 
 public class MyFile {
     public String name;
-    public String data;
+    public byte[] data;
+    public int length;
 
     public String getName() {
         return name;
@@ -12,18 +13,26 @@ public class MyFile {
         this.name = name;
     }
 
-
-    public String getData() {
+    public byte[] getData() {
         return data;
     }
 
-    public void setData(String data) {
+    public void setData(byte[] data) {
         this.data = data;
     }
 
-    public MyFile(String name, String data) {
+    public int getLength() {
+        return length;
+    }
+
+    public void setLength(int length) {
+        this.length = length;
+    }
+
+    public MyFile(String name, byte[] data, int length) {
         this.name = name;
         this.data = data;
+        this.length = length;
     }
 
     public MyFile() {

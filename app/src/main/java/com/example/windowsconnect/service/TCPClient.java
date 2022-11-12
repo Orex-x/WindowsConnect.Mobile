@@ -44,10 +44,19 @@ public class TCPClient {
         @Override
         public void run() {
             super.run();
+            Socket clientSocket = null;
+            OutputStream out = null;
             try {
-                Socket clientSocket = new Socket (ip, Settings.TCP_SEND_PORT);
-                OutputStream out = clientSocket.getOutputStream();
-                out.write(data);
+                clientSocket = new Socket (ip, Settings.TCP_SEND_PORT);
+                out = clientSocket.getOutputStream();
+                out.write(data, 0, data.length);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            try {
+                clientSocket.close();
+                out.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }

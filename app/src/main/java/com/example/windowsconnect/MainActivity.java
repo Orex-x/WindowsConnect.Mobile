@@ -149,8 +149,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             if(_host != null){
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 intent.setType("*/*");
-                String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
-                intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
+                //String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
+                //intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
                 startActivityForResult(intent, REQUEST_TAKE_DOCUMENT);
             }
         });
@@ -255,15 +255,21 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 if(resultCode == RESULT_OK) {
                     Uri uri = data.getData();
                     try {
-                        MyFile myFile = new MyFile(getFileName(uri),
-                                new String(getDataFromURI(uri), StandardCharsets.UTF_8));
+
+
+
+                        //String command = CommandHelper.createCommand(Command.saveFile, myFile);
+
+
+                        //byte[] hz = getDataFromURI(uri);
+                        //String json = new String(utf8, StandardCharsets.UTF_8);
+                        InputStream iStream = getContentResolver().openInputStream(uri);
+                        byte[] inputData = getBytes(iStream);
+
+
+                        MyFile myFile = new MyFile(getFileName(uri), inputData, inputData.length);
                         String command = CommandHelper.createCommand(Command.saveFile, myFile);
-
-                        byte[] utf8 = convertStream(Charset.forName("utf-8"), uri);
-                        byte[] hz = getDataFromURI(uri);
-                        String json = new String(utf8, StandardCharsets.UTF_8);
-
-                        TCPClient.sendMessage(utf8, _host.localIP);
+                        TCPClient.sendMessage(command, _host.localIP);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -271,12 +277,24 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 }}
     }
 
+    public byte[] getBytes(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
+        int bufferSize = 1024;
+        byte[] buffer = new byte[bufferSize];
+
+        int len = 0;
+        while ((len = inputStream.read(buffer)) != -1) {
+            byteBuffer.write(buffer, 0, len);
+        }
+        return byteBuffer.toByteArray();
+    }
+
     public byte[] getDataFromURI(final Uri uri) throws IOException {
         InputStream is = getContentResolver().openInputStream(uri);
 
         ByteArrayOutputStream buffer = new ByteArrayOutputStream();
         int nRead;
-        byte[] data = new byte[16384];
+        byte[] data = new byte[4096];
 
         while ((nRead = is.read(data, 0, data.length)) != -1) {
             buffer.write(data, 0, nRead);
