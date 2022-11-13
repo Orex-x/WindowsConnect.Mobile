@@ -24,6 +24,8 @@ public class TCPClient {
     }
 
     public static void sendMessage(byte[] data, String ip){
+
+
         new TCPSendMessageThread(data, ip).start();
     }
 
@@ -49,14 +51,13 @@ public class TCPClient {
             OutputStream out = null;
             byte[] packet_length  = ByteBuffer.allocate(4).putInt(data.length).array();
             try {
-                clientSocket = new Socket (ip, Settings.TCP_SEND_PORT);
+                clientSocket = new Socket(ip, Settings.TCP_SEND_PORT);
                 out = clientSocket.getOutputStream();
                 out.write(packet_length, 0, packet_length.length);
                 out.write(data, 0, data.length);
             } catch (IOException e) {
                 e.printStackTrace();
             }
-
             try {
                 clientSocket.close();
                 out.close();

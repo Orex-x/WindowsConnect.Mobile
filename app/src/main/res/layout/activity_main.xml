@@ -117,12 +117,21 @@
         android:id="@+id/btnPrint"
         android:layout_width="100dp"
         android:layout_height="100dp"
-        android:src="@drawable/printer"
-        android:background="@null"
         android:layout_marginLeft="10dp"
         android:layout_marginTop="10dp"
+        android:background="@null"
+        android:src="@drawable/file"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
-
+    <ImageButton
+        android:id="@+id/btnScreenStream"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:background="@null"
+        android:src="@drawable/air_play_off"
+        app:layout_constraintStart_toEndOf="@+id/btnPrint"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 </androidx.constraintlayout.widget.ConstraintLayout>

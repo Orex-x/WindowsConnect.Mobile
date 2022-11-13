@@ -1,21 +1,44 @@
 package com.example.windowsconnect;
 
+import static android.content.ContentValues.TAG;
+
 import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.content.pm.PackageManager;
+import android.content.pm.ServiceInfo;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Message;
 import android.provider.OpenableColumns;
 import android.util.Base64;
+import android.util.DisplayMetrics;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -33,23 +56,18 @@ import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.models.MyFile;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.CaptureAct;
+import com.example.windowsconnect.service.RecordService;
 import com.example.windowsconnect.service.Settings;
 import com.example.windowsconnect.service.TCPClient;
 import com.example.windowsconnect.service.UDPClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
-
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, UdpReceiveMainActivityListener {
 
@@ -57,6 +75,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private ImageButton _btnSleep;
     private ImageButton _btnWakeUp;
     private ImageButton _btnPrint;
+    private ImageButton _btnScreenStream;
     private ImageView _imageView;
 
     private UDPClient _udpClient;
@@ -69,23 +88,47 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     private static final int REQUEST_TAKE_DOCUMENT = 2;
 
+    private static final int RECORD_REQUEST_CODE  = 101;
+    private static final int AUDIO_REQUEST_CODE   = 103;
+    private static final int FOREGROUND_SERVICE_REQUEST_CODE = 104;
+    private static final int CAMERA_REQUEST_CODE = 105;
+    private static final int INTERNET_REQUEST_CODE = 106;
+    private static final int ACCESS_NETWORK_STATE_REQUEST_CODE = 107;
+    private static final int READ_EXTERNAL_STORAGE_REQUEST_CODE = 108;
+    private static final int WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 108;
+
+    private MediaProjectionManager projectionManager;
+    private MediaProjection mediaProjection;
+    private RecordService recordService;
+
     //пасхалка, чтобы вызвать звук залипания клавиш (для степы),
     // надо нажать на название хоста 3 раза
     private int countClick = 0;
 
+    private boolean screenOn = false;
+
+    ActivityResultLauncher<Intent> startMediaProjection;
 
     FrameLayout frame;
     private ListDeviceFragment listDeviceFragment;
 
     @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unbindService(connection);
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         setContentView(R.layout.activity_main);
 
         _btnDisconnect = findViewById(R.id.btnDisconnectConnect);
         _btnSleep = findViewById(R.id.btnSleep);
         _btnWakeUp = findViewById(R.id.btnWakeUp);
         _btnPrint = findViewById(R.id.btnPrint);
+        _btnScreenStream = findViewById(R.id.btnScreenStream);
         _seekBarVolume = findViewById(R.id.seekBarVolume);
         _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
@@ -145,6 +188,74 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             //_udpClient.WakeUp();
         });
 
+        _btnScreenStream.setEnabled(false);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+
+            startMediaProjection = registerForActivityResult(
+                    new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == Activity.RESULT_OK) {
+
+
+                            Intent activityIntent = new Intent(this, MainActivity.class);
+                            activityIntent.setAction("stop");
+                            PendingIntent contentIntent = PendingIntent.getActivity(this, 0, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+
+                                String channelId = "001";
+                                String channelName = "myChannel";
+                                NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
+                                channel.setLightColor(Color.BLUE);
+                                channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+
+                                NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+
+                                if (manager != null) {
+                                    manager.createNotificationChannel(channel);
+                                    Notification notification = new Notification.
+                                            Builder(getApplicationContext(), channelId)
+                                            .setOngoing(true)
+                                            .setSmallIcon(R.mipmap.ic_launcher)
+                                            .setCategory(Notification.CATEGORY_SERVICE)
+                                            .setContentTitle("cancel")
+                                            .setContentIntent(contentIntent)
+                                            .build();
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                        recordService.startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+                                    } else {
+                                        recordService.startForeground(1, notification);
+                                    }
+                                }
+                            } else {
+                                recordService.startForeground(1, new Notification());
+                            }
+
+                           new Handler().postDelayed(() -> {
+                               mediaProjection = projectionManager.getMediaProjection(result.getResultCode(), result.getData());
+                               recordService.setMediaProject(mediaProjection);
+                               recordService.startRecord();
+                               _btnScreenStream.setImageResource(R.drawable.air_play_on);
+                           }, 000);
+                        }
+                    }
+            );
+        }
+        _btnScreenStream.setOnClickListener(v ->{
+            if (screenOn) {
+                screenOn = false;
+                recordService.stopRecord();
+                _btnScreenStream.setImageResource(R.drawable.air_play_off);
+            } else {
+                screenOn = true;
+                Intent captureIntent = projectionManager.createScreenCaptureIntent();
+               // startActivityForResult(captureIntent, RECORD_REQUEST_CODE);
+                startMediaProjection.launch(captureIntent);
+            }
+        });
+
+
+
         _btnPrint.setOnClickListener(v ->{
             if(_host != null){
                 Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -189,7 +300,60 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
             }
         });
+
+
+        setPermissions();
+
+        Intent intent = new Intent(this, RecordService.class);
+        bindService(intent, connection, BIND_AUTO_CREATE);
     }
+
+    public void setPermissions(){
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.CAMERA}, CAMERA_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.INTERNET)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.INTERNET}, INTERNET_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_NETWORK_STATE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.ACCESS_NETWORK_STATE}, ACCESS_NETWORK_STATE_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.READ_EXTERNAL_STORAGE}, READ_EXTERNAL_STORAGE_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE}, WRITE_EXTERNAL_STORAGE_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.RECORD_AUDIO}, AUDIO_REQUEST_CODE);
+        }
+
+        if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.FOREGROUND_SERVICE)
+                != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this,
+                    new String[] {Manifest.permission.FOREGROUND_SERVICE}, FOREGROUND_SERVICE_REQUEST_CODE);
+        }
+    }
+
+
 
     private void scanCode() {
         ScanOptions options = new ScanOptions();
@@ -246,7 +410,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         handler.sendMessage(message);
     }
 
-    @Override
+ /*   @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -255,17 +419,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 if(resultCode == RESULT_OK) {
                     Uri uri = data.getData();
                     try {
-
-
-
-                        //String command = CommandHelper.createCommand(Command.saveFile, myFile);
-
-
-                        //byte[] hz = getDataFromURI(uri);
-                        //String json = new String(utf8, StandardCharsets.UTF_8);
                         InputStream iStream = getContentResolver().openInputStream(uri);
                         byte[] inputData = getBytes(iStream);
-
 
                         MyFile myFile = new MyFile(getFileName(uri), inputData, inputData.length);
                         String command = CommandHelper.createCommand(Command.saveFile, myFile);
@@ -273,8 +428,56 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
+                }
+                break;
+            case RECORD_REQUEST_CODE:{
+                if(resultCode == RESULT_OK) {
+                    // delay needed because getMediaProjection() throws an error if it's called too soon
+                    new Handler().postDelayed(() -> {
+                        mediaProjection = projectionManager.getMediaProjection(resultCode, data);
+                        recordService.setMediaProject(mediaProjection);
+                        recordService.startRecord();
+                        _btnScreenStream.setImageResource(R.drawable.air_play_on);
+                    }, 5000);
+                }
+                break;
+            }
+        }
+    }*/
 
-                }}
+
+    private ServiceConnection connection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName className, IBinder service) {
+            DisplayMetrics metrics = new DisplayMetrics();
+            getWindowManager().getDefaultDisplay().getMetrics(metrics);
+            RecordService.RecordBinder binder = (RecordService.RecordBinder) service;
+            recordService = binder.getRecordService();
+            recordService.setConfig(metrics.widthPixels, metrics.heightPixels, metrics.densityDpi);
+            _btnScreenStream.setEnabled(true);
+            _btnScreenStream.setImageResource(recordService.isRunning() ?  R.drawable.air_play_on : R.drawable.air_play_off);
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName arg0) {}
+    };
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == RECORD_REQUEST_CODE ||
+                requestCode == AUDIO_REQUEST_CODE ||
+                requestCode == INTERNET_REQUEST_CODE ||
+                requestCode == CAMERA_REQUEST_CODE ||
+                requestCode == ACCESS_NETWORK_STATE_REQUEST_CODE ||
+                requestCode == READ_EXTERNAL_STORAGE_REQUEST_CODE ||
+                requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE ||
+                requestCode == FOREGROUND_SERVICE_REQUEST_CODE) {
+            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                finish();
+            }
+        }
     }
 
     public byte[] getBytes(InputStream inputStream) throws IOException {
@@ -287,36 +490,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             byteBuffer.write(buffer, 0, len);
         }
         return byteBuffer.toByteArray();
-    }
-
-    public byte[] getDataFromURI(final Uri uri) throws IOException {
-        InputStream is = getContentResolver().openInputStream(uri);
-
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-        int nRead;
-        byte[] data = new byte[4096];
-
-        while ((nRead = is.read(data, 0, data.length)) != -1) {
-            buffer.write(data, 0, nRead);
-        }
-        return buffer.toByteArray();
-    }
-
-    // Nothing here should throw IOException in reality - work out what you want to do.
-    public byte[] convertStream(Charset encoding, Uri uri) throws IOException {
-        InputStream is = getContentResolver().openInputStream(uri);
-        InputStreamReader contentReader = new InputStreamReader(is, encoding);
-
-        int readCount;
-        char[] buffer = new char[4096];
-        try (ByteArrayOutputStream converted = new ByteArrayOutputStream()) {
-            try (Writer writer = new OutputStreamWriter(converted, StandardCharsets.UTF_8)) {
-                while ((readCount = contentReader.read(buffer, 0, buffer.length)) != -1) {
-                    writer.write(buffer, 0, readCount);
-                }
-            }
-            return converted.toByteArray();
-        }
     }
 
     @SuppressLint("Range")
@@ -341,4 +514,5 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         }
         return result;
     }
+
 }
