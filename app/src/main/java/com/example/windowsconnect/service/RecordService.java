@@ -46,6 +46,7 @@ public class RecordService extends Service {
 
     LocalSocket receiver;
     LocalServerSocket server;
+    LocalSocket sender;
 
     private final String SOCKET_ADDRESS = "socket1";
 
@@ -98,27 +99,37 @@ public class RecordService extends Service {
         if (mediaProjection == null || running) {
             return false;
         }
-
-        initRecorder();
-        createVirtualDisplay();
-
         try {
-            mediaRecorder.start();
-          /*  System.out.println("------mRecorder.start()--------");
-            receiver = server.accept();
-
-            System.out.println("---------server.accept();------------- ");
-
-            int ret = 0;
-            while ((ret = receiver.getInputStream().read()) != -1) {
-                System.out.println("ret =" + ret);
-            }
-
-            System.out.println("ret =" + ret);*/
-        } catch (IllegalStateException e) {
+            server = new LocalServerSocket(SOCKET_ADDRESS);
+            sender = new LocalSocket();
+            sender.connect(new LocalSocketAddress(SOCKET_ADDRESS));
+            initRecorder(sender);
+            createVirtualDisplay();
+        } catch (IOException e) {
             e.printStackTrace();
         }
 
+        try {
+            mediaRecorder.start();
+            try {
+                receiver = server.accept();
+                System.out.println("---------server.accept();------------- ");
+
+                int ret = 0;
+                while ((ret = receiver.getInputStream().read()) != -1)
+                {
+                    System.out.println( "ret =" + ret);
+                }
+
+                System.out.println("ret =" + ret);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+        }
         running = true;
         return true;
     }
@@ -141,52 +152,23 @@ public class RecordService extends Service {
                 DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, mediaRecorder.getSurface(), null, null);
     }
 
-    private void initRecorder() {
+    private void initRecorder(LocalSocket sender) {
         try {
-            server = new LocalServerSocket(SOCKET_ADDRESS);
-
-            LocalSocket sender = new LocalSocket();
-            try {
-                sender.connect(new LocalSocketAddress(SOCKET_ADDRESS));
-                FileDescriptor fd = sender.getFileDescriptor();
-/*
-                mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
-                mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-                mediaRecorder.setOutputFile(sender.getFileDescriptor());
-
-*/
-
-              /*  mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-                mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-                mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-                mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-                mediaRecorder.setVideoSize(width, height);
-                mediaRecorder.setVideoFrameRate(30);
-                mediaRecorder.setOutputFile(sender.getFileDescriptor());
-                mediaRecorder.setVideoEncodingBitRate(5 * 1024 * 1024);*/
-
-                String path = getApplicationInfo().dataDir;
-
-                mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
-                mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-                mediaRecorder.setVideoFrameRate(30);
-                mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
-                mediaRecorder.setVideoSize(width, height);
-                mediaRecorder.setVideoEncodingBitRate(5 * 1024 * 1024);
-                mediaRecorder.setOutputFile(path + "/file.mp4");
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    mediaRecorder.setVideoEncodingProfileLevel(2, 4);
-                }
-
-                mediaRecorder.prepare();
-
-            } catch (IOException e) {
-                e.printStackTrace();
+            String path = getApplicationInfo().dataDir;
+            mediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
+            mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+            mediaRecorder.setVideoFrameRate(30);
+            mediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
+            mediaRecorder.setVideoSize(width, height);
+            mediaRecorder.setVideoEncodingBitRate(5 * 1024 * 1024);
+            mediaRecorder.setOutputFile(path + "/file.mp4");
+            //  mediaRecorder.setOutputFile(sender.getFileDescriptor());
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                mediaRecorder.setVideoEncodingProfileLevel(2, 4);
             }
-
+            mediaRecorder.prepare();
         } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 

@@ -410,7 +410,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         handler.sendMessage(message);
     }
 
- /*   @Override
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
@@ -443,7 +443,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 break;
             }
         }
-    }*/
+    }
 
 
     private ServiceConnection connection = new ServiceConnection() {
