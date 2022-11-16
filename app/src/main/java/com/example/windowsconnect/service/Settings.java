@@ -52,7 +52,6 @@ public class Settings {
     }
     public static final int UDP_SEND_PORT = 5000;
     public static final int UDP_LISTEN_PORT = 5001;
-    public static final int TCP_SEND_PORT = 5002;
-    public static final int TCP_LISTEN_PORT = 5003;
+    public static final int TCP_PORT = 5005;
 
 }

@@ -11,7 +11,7 @@ import java.net.MulticastSocket;
 
 public class AutoFinderHost {
     public static void Find(Device device){
-        String message = CommandHelper.createCommand(Command.requestAddDevice, device);
+        String message = CommandHelper.createCommand(Command.requestAddDevice, device, true);
         new MulticastPublisher(message).start();
     }
 }

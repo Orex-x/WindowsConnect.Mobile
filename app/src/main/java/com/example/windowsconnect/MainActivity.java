@@ -44,12 +44,13 @@ import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
-import com.example.windowsconnect.interfaces.UdpReceiveMainActivityListener;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
@@ -63,13 +64,12 @@ import com.example.windowsconnect.service.UDPClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
-import java.io.ByteArrayOutputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Map;
-import java.util.Objects;
 
-public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, UdpReceiveMainActivityListener {
+public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient {
 
     private Button _btnDisconnect;
     private ImageButton _btnSleep;
@@ -79,12 +79,13 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private ImageView _imageView;
 
     private UDPClient _udpClient;
+    private TCPClient _tcpClient;
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
     private TextView _txtHostName;
     private Host _host;
 
-    private Handler handler;
+    private Handler handler, handlerProgressBar;
 
     private static final int REQUEST_TAKE_DOCUMENT = 2;
 
@@ -100,6 +101,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private MediaProjectionManager projectionManager;
     private MediaProjection mediaProjection;
     private RecordService recordService;
+
+    private ProgressBar _progressBarUploadFile;
 
     //пасхалка, чтобы вызвать звук залипания клавиш (для степы),
     // надо нажать на название хоста 3 раза
@@ -134,13 +137,15 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
 
+        _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
+
         frame = findViewById(R.id.frame);
 
         _txtHostName.setOnClickListener(view ->{
             if(countClick++ == 3){
                 countClick = 0;
                 if(_udpClient != null){
-                    String json = CommandHelper.createCommand(Command.playStepasSound, "");
+                    String json = CommandHelper.createCommand(Command.playStepasSound, "", true);
                     _udpClient.sendMessage(json);
                 }
             }
@@ -153,9 +158,15 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             }
         };
 
+        handlerProgressBar = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                _progressBarUploadFile.setProgress((int) msg.obj);
+            }
+        };
+
         UDPClient.Receive(Settings.UDP_LISTEN_PORT);
-        TCPClient.setUdpReceiveMainActivityListener(this);
-        TCPClient.received();
+
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this);
@@ -236,7 +247,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                                recordService.setMediaProject(mediaProjection);
                                recordService.startRecord();
                                _btnScreenStream.setImageResource(R.drawable.air_play_on);
-                           }, 000);
+                           }, 0);
                         }
                     }
             );
@@ -285,7 +296,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 _txtVolume.setText("Volume: " + i);
                 if(_udpClient != null){
-                    String json = CommandHelper.createCommand(Command.changeVolume, i);
+                    String json = CommandHelper.createCommand(Command.changeVolume, i, true);
                     _udpClient.sendMessage(json);
                 }
             }
@@ -388,17 +399,29 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     public void connectHost(Host host) {
         _host = new Host(host.getPort(), host.getLocalIP(), host.getName(), host.getMacAddress());
         _udpClient = new UDPClient(host.localIP, host.port);
-        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice());
+
+        _tcpClient = new TCPClient(this, host.localIP);
+
+
+        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice(), true);
         _udpClient.sendMessage(json);
         frame.setVisibility(View.GONE);
         _btnDisconnect.setText("Disconnect");
         _txtHostName.setText("Host: " + host.getName());
+
         Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
     }
 
     @Override
     public void scanQR() {
         scanCode();
+    }
+
+    @Override
+    public void setProgressUploadFile(int progress) {
+        Message message = new Message();
+        message.obj = progress;
+        handlerProgressBar.sendMessage(message);
     }
 
     @Override
@@ -420,14 +443,20 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                     Uri uri = data.getData();
                     try {
                         InputStream iStream = getContentResolver().openInputStream(uri);
-                        byte[] inputData = getBytes(iStream);
-
-                        MyFile myFile = new MyFile(getFileName(uri), inputData, inputData.length);
-                        String command = CommandHelper.createCommand(Command.saveFile, myFile);
-                        TCPClient.sendMessage(command, _host.localIP);
-                    } catch (IOException e) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            // byte[] encoded = java.util.Base64.getEncoder().encode(inputData);
+                            long l = getFileLength(uri);
+                            MyFile myFile = new MyFile(getFileName(uri), l);
+                            String command = CommandHelper.createCommand(Command.saveFile, myFile, true);
+                            _tcpClient.sendMessageWithReceived(command);
+                            _tcpClient.sendMessage(iStream, l);
+                        }
+                    } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
+
+
+
                 }
                 break;
             case RECORD_REQUEST_CODE:{
@@ -480,18 +509,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         }
     }
 
-    public byte[] getBytes(InputStream inputStream) throws IOException {
-        ByteArrayOutputStream byteBuffer = new ByteArrayOutputStream();
-        int bufferSize = 1024;
-        byte[] buffer = new byte[bufferSize];
-
-        int len = 0;
-        while ((len = inputStream.read(buffer)) != -1) {
-            byteBuffer.write(buffer, 0, len);
-        }
-        return byteBuffer.toByteArray();
-    }
-
     @SuppressLint("Range")
     public String getFileName(Uri uri) {
         String result = null;
@@ -510,6 +527,22 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             int cut = result.lastIndexOf('/');
             if (cut != -1) {
                 result = result.substring(cut + 1);
+            }
+        }
+        return result;
+    }
+
+    @SuppressLint("Range")
+    public long getFileLength(Uri uri) {
+        long result = 0;
+        if (uri.getScheme().equals("content")) {
+            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
+            try {
+                if (cursor != null && cursor.moveToFirst()) {
+                    result = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
+                }
+            } finally {
+                cursor.close();
             }
         }
         return result;

@@ -1,9 +1,12 @@
 package com.example.windowsconnect.models;
 
+import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+
 public class MyFile {
     public String name;
-    public byte[] data;
-    public int length;
+    public long length;
 
     public String getName() {
         return name;
@@ -13,15 +16,8 @@ public class MyFile {
         this.name = name;
     }
 
-    public byte[] getData() {
-        return data;
-    }
 
-    public void setData(byte[] data) {
-        this.data = data;
-    }
-
-    public int getLength() {
+    public long getLength() {
         return length;
     }
 
@@ -29,12 +25,12 @@ public class MyFile {
         this.length = length;
     }
 
-    public MyFile(String name, byte[] data, int length) {
+    public MyFile(String name, long length) {
         this.name = name;
-        this.data = data;
         this.length = length;
     }
 
     public MyFile() {
     }
+
 }
