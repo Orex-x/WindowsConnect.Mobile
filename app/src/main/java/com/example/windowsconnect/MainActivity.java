@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _txtHostName.setOnClickListener(view ->{
             if(countClick++ == 3){
                 countClick = 0;
-                if(_udpClient != null){
+                if(_udpClient.isConnected()){
                     String json = CommandHelper.createCommand(Command.playStepasSound, "", true);
                     _udpClient.sendMessage(json);
                 }
@@ -165,19 +165,19 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             }
         };
 
-        UDPClient.Receive(Settings.UDP_LISTEN_PORT);
+        _udpClient = new UDPClient();
 
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this);
         }
 
-        if(_udpClient == null){
+        if(!_udpClient.isConnected()){
             _btnDisconnect.setText("Connect");
             new Thread(){
                 @Override
                 public void run() {
-                    while (_udpClient == null){
+                    while (!_udpClient.isConnected()){
                         AutoFinderHost.Find(Settings.getDevice());
                         try {
                             Thread.sleep(5000);
@@ -278,7 +278,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         });
 
         _btnDisconnect.setOnClickListener(v -> {
-            if(_udpClient == null){
+            if(!_udpClient.isConnected()){
                 frame.setVisibility(View.VISIBLE);
                 FragmentManager fragmentManager = getSupportFragmentManager();
                 FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
@@ -295,7 +295,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             @Override
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 _txtVolume.setText("Volume: " + i);
-                if(_udpClient != null){
+                if(_udpClient.isConnected()){
                     String json = CommandHelper.createCommand(Command.changeVolume, i, true);
                     _udpClient.sendMessage(json);
                 }
@@ -397,19 +397,22 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     @Override
     public void connectHost(Host host) {
-        _host = new Host(host.getPort(), host.getLocalIP(), host.getName(), host.getMacAddress());
-        _udpClient = new UDPClient(host.localIP, host.port);
-
-        _tcpClient = new TCPClient(this, host.localIP);
-
-
+        _udpClient.setIp(host.localIP);
         String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice(), true);
-        _udpClient.sendMessage(json);
-        frame.setVisibility(View.GONE);
-        _btnDisconnect.setText("Disconnect");
-        _txtHostName.setText("Host: " + host.getName());
+        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json));
 
-        Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+        if(answer == 200){
+            _host = host;
+            _tcpClient = new TCPClient(this, host.localIP);
+            _udpClient.setConnected(true);
+            frame.setVisibility(View.GONE);
+
+            _btnDisconnect.setText("Disconnect");
+            _txtHostName.setText("Host: " + host.getName());
+            Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+        }else{
+            Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
+        }
     }
 
     @Override
@@ -444,19 +447,15 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                     try {
                         InputStream iStream = getContentResolver().openInputStream(uri);
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            // byte[] encoded = java.util.Base64.getEncoder().encode(inputData);
-                            long l = getFileLength(uri);
-                            MyFile myFile = new MyFile(getFileName(uri), l);
+                            long fileLength = getFileLength(uri);
+                            MyFile myFile = new MyFile(getFileName(uri), fileLength);
                             String command = CommandHelper.createCommand(Command.saveFile, myFile, true);
                             _tcpClient.sendMessageWithReceived(command);
-                            _tcpClient.sendMessage(iStream, l);
+                            _tcpClient.sendMessage(iStream, fileLength);
                         }
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();
                     }
-
-
-
                 }
                 break;
             case RECORD_REQUEST_CODE:{
@@ -547,5 +546,4 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         }
         return result;
     }
-
 }

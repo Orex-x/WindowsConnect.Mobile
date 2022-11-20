@@ -31,9 +31,7 @@ class MulticastPublisher extends Thread{
             socket = new DatagramSocket();
             group = InetAddress.getByName("230.0.0.0");
             buf = message.getBytes();
-
-            DatagramPacket packet
-                    = new DatagramPacket(buf, buf.length, group, Settings.UDP_SEND_PORT);
+            DatagramPacket packet = new DatagramPacket(buf, buf.length, group, Settings.UDP_SEND_PORT);
             socket.send(packet);
             socket.close();
         }catch (Exception e){

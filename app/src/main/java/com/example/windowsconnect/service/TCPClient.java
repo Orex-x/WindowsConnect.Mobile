@@ -122,6 +122,7 @@ public class TCPClient {
                     int length = byteBuffer.getInt();
 
                     byte[] buffer = new byte[length];
+
                     int count = 0;
                     do
                     {
@@ -196,7 +197,7 @@ public class TCPClient {
                 int bufferSize = 1024;
                 byte[] buffer = new byte[bufferSize];
 
-                int len = 0;
+                int len;
                 long count = 0;
                 while ((len = stream.read(buffer)) != -1) {
                     _outputStream.write(buffer, 0, len);
