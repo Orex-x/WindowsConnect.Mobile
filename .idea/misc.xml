@@ -4,6 +4,7 @@
     <option name="filePathToZoomLevelMap">
       <map>
         <entry key="..\:/Users/dana/AndroidStudioProjects/WindowsConnect/app/src/main/res/layout/activity_main.xml" value="0.33" />
+        <entry key="..\:/Users/dana/AndroidStudioProjects/WindowsConnect/app/src/main/res/layout/activity_touch_pad.xml" value="0.3625" />
         <entry key="..\:/Users/dana/AndroidStudioProjects/WindowsConnect/app/src/main/res/layout/fragment_list_device.xml" value="0.3182291666666667" />
         <entry key="..\:/Users/dana/AndroidStudioProjects/WindowsConnect/app/src/main/res/layout/fragment_list_hosts.xml" value="0.2864583333333333" />
         <entry key="..\:/Users/dana/AndroidStudioProjects/WindowsConnect/app/src/main/res/layout/host_item.xml" value="0.33125" />

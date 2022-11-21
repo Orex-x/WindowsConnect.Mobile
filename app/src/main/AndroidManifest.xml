@@ -4,17 +4,15 @@
     package="com.example.windowsconnect">
 
     <uses-permission android:name="android.permission.CAMERA" />
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
-
-
     <application
-        android:name="com.example.windowsconnect.applications.RecordApplication"
+        android:name=".applications.RecordApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -24,6 +22,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WindowsConnect"
         tools:targetApi="31">
+        <activity
+            android:name=".TouchPadActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -37,14 +38,14 @@
             android:name=".service.CaptureAct"
             android:screenOrientation="portrait"
             android:stateNotNeeded="true"
-            android:theme="@style/zxing_CaptureTheme"/>
+            android:theme="@style/zxing_CaptureTheme" />
 
-        <service android:name="com.example.windowsconnect.service.RecordService"
-            android:foregroundServiceType="mediaProjection"
-            tools:targetApi="Sv2"
+        <service
+            android:name=".service.RecordService"
             android:enabled="true"
-            android:exported="false"/>
-
+            android:exported="false"
+            android:foregroundServiceType="mediaProjection"
+            tools:targetApi="Sv2" />
     </application>
 
 </manifest>

@@ -9,5 +9,14 @@ public enum Command{
     setWallpaper,
     playStepasSound,
     saveFile,
+
+    virtualSingleTouchDown,
+    virtualSingleTouchUp,
+    virtualSingleTouchMove,
+    virtualSingleTouchRightClick,
+    virtualSingleTouchLeftClick,
+    virtualMultiTouchDown,
+    virtualMultiTouchUp,
+    virtualMultiTouchMove,
 }
 

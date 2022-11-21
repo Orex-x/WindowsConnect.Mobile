@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
+import androidx.core.view.MotionEventCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -39,6 +40,7 @@ import android.os.Message;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.util.DisplayMetrics;
+import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -55,6 +57,7 @@ import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.models.MyFile;
+import com.example.windowsconnect.models.Point;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.CaptureAct;
 import com.example.windowsconnect.service.RecordService;
@@ -83,6 +86,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
     private TextView _txtHostName;
+    private TextView _txtVirtualTouchPadLog;
+    private View _virtualTouchPad;
     private Host _host;
 
     private Handler handler, handlerProgressBar;
@@ -107,6 +112,12 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     //пасхалка, чтобы вызвать звук залипания клавиш (для степы),
     // надо нажать на название хоста 3 раза
     private int countClick = 0;
+
+    //для виртуального тачпада
+    static int doubleClick = 0;
+    static boolean click = false;
+    static boolean multiClick = false;
+    static boolean multiTouchUp = false;
 
     private boolean screenOn = false;
 
@@ -136,20 +147,15 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
+        _virtualTouchPad = findViewById(R.id.virtualTouchPad);
+        _txtVirtualTouchPadLog = findViewById(R.id.txtVirtualTouchPadLog);
 
         _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
 
         frame = findViewById(R.id.frame);
 
-        _txtHostName.setOnClickListener(view ->{
-            if(countClick++ == 3){
-                countClick = 0;
-                if(_udpClient.isConnected()){
-                    String json = CommandHelper.createCommand(Command.playStepasSound, "", true);
-                    _udpClient.sendMessage(json);
-                }
-            }
-        });
+
+
 
         handler = new Handler() {
             @Override
@@ -167,9 +173,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         _udpClient = new UDPClient();
 
-
         if (listDeviceFragment == null) {
-            listDeviceFragment = new ListDeviceFragment(this);
+            listDeviceFragment = new ListDeviceFragment(this, _udpClient);
         }
 
         if(!_udpClient.isConnected()){
@@ -266,17 +271,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         });
 
 
-
-        _btnPrint.setOnClickListener(v ->{
-            if(_host != null){
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.setType("*/*");
-                //String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
-                //intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
-                startActivityForResult(intent, REQUEST_TAKE_DOCUMENT);
-            }
-        });
-
         _btnDisconnect.setOnClickListener(v -> {
             if(!_udpClient.isConnected()){
                 frame.setVisibility(View.VISIBLE);
@@ -291,32 +285,11 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         });
 
-        _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                _txtVolume.setText("Volume: " + i);
-                if(_udpClient.isConnected()){
-                    String json = CommandHelper.createCommand(Command.changeVolume, i, true);
-                    _udpClient.sendMessage(json);
-                }
-            }
-
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
-
-            }
-
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
-
-            }
-        });
-
-
         setPermissions();
 
         Intent intent = new Intent(this, RecordService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
+
     }
 
     public void setPermissions(){
@@ -366,6 +339,117 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
 
 
+    public void setViewListeners(){
+        _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                _txtVolume.setText("Volume: " + i);
+                if(_udpClient.isConnected()){
+                    String json = CommandHelper.createCommand(Command.changeVolume, i);
+                    _udpClient.sendMessage(json);
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+        _btnPrint.setOnClickListener(v ->{
+            if(_host != null){
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("*/*");
+                //String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
+                //intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
+                startActivityForResult(intent, REQUEST_TAKE_DOCUMENT);
+            }
+        });
+
+        _virtualTouchPad.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                int x = (int)event.getX();
+                int y = (int)event.getY();
+
+
+                if (event.getPointerCount() > 1) {
+                    // Multitouch event
+                    _txtVirtualTouchPadLog.setText("Multitouch " + "x: " + x + "y: " + y);
+                    if(_udpClient.isConnected()){
+                        String command = "";
+                        switch (MotionEventCompat.getActionMasked(event)) {
+                            case MotionEvent.ACTION_POINTER_DOWN:
+                                multiClick = true;
+                                new Handler().postDelayed(() -> multiClick = false, 80);
+                                command = CommandHelper.createCommand(Command.virtualMultiTouchDown, new Point(x, y));
+                                _udpClient.sendMessage(command);
+                                break;
+                            case MotionEvent.ACTION_MOVE:
+                                command = CommandHelper.createCommand(Command.virtualMultiTouchMove, new Point(x, y));
+                                _udpClient.sendMessage(command);
+                                break;
+                            case MotionEvent.ACTION_POINTER_UP:
+                                if(multiClick){
+                                    command = CommandHelper.createCommand(Command.virtualSingleTouchRightClick, "");
+                                }else{
+                                    multiClick = false;
+                                    multiTouchUp = true;
+                                    new Handler().postDelayed(() -> multiTouchUp = false, 100);
+                                    command = CommandHelper.createCommand(Command.virtualMultiTouchUp, new Point(x, y));
+                                }
+                                _udpClient.sendMessage(command);
+                                break;
+                        }
+                    }
+                } else {
+                    // Single touch event
+                    _txtVirtualTouchPadLog.setText("Single touch " + "x: " + x + "y: " + y);
+                    if(_udpClient.isConnected()){
+                        String command = "";
+                        switch (event.getAction()) {
+                            case MotionEvent.ACTION_DOWN:
+                                click = true;
+                                new Handler().postDelayed(() -> click = false, 80);
+                                command = CommandHelper.createCommand(Command.virtualSingleTouchDown, new Point(x, y));
+                                _udpClient.sendMessage(command);
+                                break;
+                            case MotionEvent.ACTION_MOVE:
+                                if(!multiTouchUp){
+                                    command = CommandHelper.createCommand(Command.virtualSingleTouchMove, new Point(x, y));
+                                    _udpClient.sendMessage(command);
+                                }
+                                break;
+                            case MotionEvent.ACTION_UP:
+                                if(click){
+                                    if(!multiClick){
+                                        if(!multiTouchUp){
+                                            command = CommandHelper.createCommand(Command.virtualSingleTouchLeftClick, "");
+                                        }
+                                    }
+                                }else{
+                                    click = false;
+                                    command = CommandHelper.createCommand(Command.virtualSingleTouchUp, new Point(x, y));
+                                }
+                                 _udpClient.sendMessage(command);
+                                break;
+                        }
+                    }
+                }
+
+                return true;
+            }
+        });
+
+
+
+
+    }
+
     private void scanCode() {
         ScanOptions options = new ScanOptions();
         options.setPrompt("Volume up to flash on");
@@ -398,7 +482,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     @Override
     public void connectHost(Host host) {
         _udpClient.setIp(host.localIP);
-        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice(), true);
+        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice());
         int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json));
 
         if(answer == 200){
@@ -407,6 +491,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
 
+            setViewListeners();
             _btnDisconnect.setText("Disconnect");
             _txtHostName.setText("Host: " + host.getName());
             Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
@@ -449,7 +534,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             long fileLength = getFileLength(uri);
                             MyFile myFile = new MyFile(getFileName(uri), fileLength);
-                            String command = CommandHelper.createCommand(Command.saveFile, myFile, true);
+                            String command = CommandHelper.createCommand(Command.saveFile, myFile);
                             _tcpClient.sendMessageWithReceived(command);
                             _tcpClient.sendMessage(iStream, fileLength);
                         }

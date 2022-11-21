@@ -39,10 +39,11 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
     private Handler handler;
     private ProgressBar progress;
+    private UDPClient _udpClient;
 
-
-    public ListDeviceFragment(ListDeviceFragmentListener listener){
+    public ListDeviceFragment(ListDeviceFragmentListener listener, UDPClient udpClient){
         _listener = listener;
+        _udpClient = udpClient;
     }
 
     @Override
@@ -57,7 +58,7 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
         adapter = new HostAdapter(getContext(), R.layout.host_item ,hosts, this);
         listView.setAdapter(adapter);
 
-        UDPClient.setUdpReceiveListDeviceFragmentListener(this);
+        _udpClient.setUdpReceiveListDeviceFragmentListener(this);
 
         btnScanQR.setOnClickListener(view -> _listener.scanQR());
 
