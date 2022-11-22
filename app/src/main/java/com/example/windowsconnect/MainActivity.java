@@ -70,24 +70,26 @@ import com.journeyapps.barcodescanner.ScanOptions;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.Serializable;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient {
 
     private Button _btnDisconnect;
+    private ImageButton _btnTouchPad;
     private ImageButton _btnSleep;
     private ImageButton _btnWakeUp;
     private ImageButton _btnPrint;
     private ImageButton _btnScreenStream;
     private ImageView _imageView;
 
-    private UDPClient _udpClient;
-    private TCPClient _tcpClient;
+    public static UDPClient _udpClient;
+    public static TCPClient _tcpClient;
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
     private TextView _txtHostName;
     private TextView _txtVirtualTouchPadLog;
-    private View _virtualTouchPad;
+
     private Host _host;
 
     private Handler handler, handlerProgressBar;
@@ -113,11 +115,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     // надо нажать на название хоста 3 раза
     private int countClick = 0;
 
-    //для виртуального тачпада
-    static int doubleClick = 0;
-    static boolean click = false;
-    static boolean multiClick = false;
-    static boolean multiTouchUp = false;
+
 
     private boolean screenOn = false;
 
@@ -143,11 +141,12 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _btnWakeUp = findViewById(R.id.btnWakeUp);
         _btnPrint = findViewById(R.id.btnPrint);
         _btnScreenStream = findViewById(R.id.btnScreenStream);
+        _btnTouchPad = findViewById(R.id.btnTouchPad);
         _seekBarVolume = findViewById(R.id.seekBarVolume);
         _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
-        _virtualTouchPad = findViewById(R.id.virtualTouchPad);
+
         _txtVirtualTouchPadLog = findViewById(R.id.txtVirtualTouchPadLog);
 
         _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
@@ -172,6 +171,11 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         };
 
         _udpClient = new UDPClient();
+       // _udpClient.setConnected(true);
+       // _udpClient.setIp("192.168.0.103");
+
+       // setViewListeners();
+
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this, _udpClient);
@@ -345,8 +349,9 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 _txtVolume.setText("Volume: " + i);
                 if(_udpClient.isConnected()){
-                    String json = CommandHelper.createCommand(Command.changeVolume, i);
-                    _udpClient.sendMessage(json);
+                    //тут надо исправить
+                    String json = CommandHelper.toJson(i);
+                    _udpClient.sendMessage(json, Command.changeVolume);
                 }
             }
 
@@ -370,84 +375,10 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             }
         });
 
-        _virtualTouchPad.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                int x = (int)event.getX();
-                int y = (int)event.getY();
-
-
-                if (event.getPointerCount() > 1) {
-                    // Multitouch event
-                    _txtVirtualTouchPadLog.setText("Multitouch " + "x: " + x + "y: " + y);
-                    if(_udpClient.isConnected()){
-                        String command = "";
-                        switch (MotionEventCompat.getActionMasked(event)) {
-                            case MotionEvent.ACTION_POINTER_DOWN:
-                                multiClick = true;
-                                new Handler().postDelayed(() -> multiClick = false, 80);
-                                command = CommandHelper.createCommand(Command.virtualMultiTouchDown, new Point(x, y));
-                                _udpClient.sendMessage(command);
-                                break;
-                            case MotionEvent.ACTION_MOVE:
-                                command = CommandHelper.createCommand(Command.virtualMultiTouchMove, new Point(x, y));
-                                _udpClient.sendMessage(command);
-                                break;
-                            case MotionEvent.ACTION_POINTER_UP:
-                                if(multiClick){
-                                    command = CommandHelper.createCommand(Command.virtualSingleTouchRightClick, "");
-                                }else{
-                                    multiClick = false;
-                                    multiTouchUp = true;
-                                    new Handler().postDelayed(() -> multiTouchUp = false, 100);
-                                    command = CommandHelper.createCommand(Command.virtualMultiTouchUp, new Point(x, y));
-                                }
-                                _udpClient.sendMessage(command);
-                                break;
-                        }
-                    }
-                } else {
-                    // Single touch event
-                    _txtVirtualTouchPadLog.setText("Single touch " + "x: " + x + "y: " + y);
-                    if(_udpClient.isConnected()){
-                        String command = "";
-                        switch (event.getAction()) {
-                            case MotionEvent.ACTION_DOWN:
-                                click = true;
-                                new Handler().postDelayed(() -> click = false, 80);
-                                command = CommandHelper.createCommand(Command.virtualSingleTouchDown, new Point(x, y));
-                                _udpClient.sendMessage(command);
-                                break;
-                            case MotionEvent.ACTION_MOVE:
-                                if(!multiTouchUp){
-                                    command = CommandHelper.createCommand(Command.virtualSingleTouchMove, new Point(x, y));
-                                    _udpClient.sendMessage(command);
-                                }
-                                break;
-                            case MotionEvent.ACTION_UP:
-                                if(click){
-                                    if(!multiClick){
-                                        if(!multiTouchUp){
-                                            command = CommandHelper.createCommand(Command.virtualSingleTouchLeftClick, "");
-                                        }
-                                    }
-                                }else{
-                                    click = false;
-                                    command = CommandHelper.createCommand(Command.virtualSingleTouchUp, new Point(x, y));
-                                }
-                                 _udpClient.sendMessage(command);
-                                break;
-                        }
-                    }
-                }
-
-                return true;
-            }
+        _btnTouchPad.setOnClickListener(v -> {
+            Intent intent = new Intent(this, TouchPadActivity.class);
+            startActivity(intent);
         });
-
-
-
-
     }
 
     private void scanCode() {
@@ -482,8 +413,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     @Override
     public void connectHost(Host host) {
         _udpClient.setIp(host.localIP);
-        String json = CommandHelper.createCommand(Command.addDevice, Settings.getDevice());
-        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json));
+        String json = CommandHelper.toJson(Settings.getDevice());
+        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice));
 
         if(answer == 200){
             _host = host;
@@ -534,8 +465,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             long fileLength = getFileLength(uri);
                             MyFile myFile = new MyFile(getFileName(uri), fileLength);
-                            String command = CommandHelper.createCommand(Command.saveFile, myFile);
-                            _tcpClient.sendMessageWithReceived(command);
+                            String json = CommandHelper.toJson(myFile);
+                            _tcpClient.sendMessageWithReceived(json, Command.saveFile);
                             _tcpClient.sendMessage(iStream, fileLength);
                         }
                     } catch (FileNotFoundException e) {

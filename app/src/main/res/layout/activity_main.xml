@@ -115,24 +115,41 @@
 
     <ImageButton
         android:id="@+id/btnPrint"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:layout_marginLeft="10dp"
         android:layout_marginTop="10dp"
         android:background="@null"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null"
         android:src="@drawable/file"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
     <ImageButton
         android:id="@+id/btnScreenStream"
-        android:layout_width="100dp"
-        android:layout_height="100dp"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
         android:layout_marginStart="20dp"
         android:layout_marginTop="8dp"
         android:background="@null"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null"
         android:src="@drawable/air_play_off"
         app:layout_constraintStart_toEndOf="@+id/btnPrint"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
+
+    <ImageButton
+        android:id="@+id/btnTouchPad"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="@null"
+        android:background="@null"
+        android:src="@drawable/icon_touchpad_2"
+        app:layout_constraintStart_toEndOf="@+id/btnScreenStream"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
     <ProgressBar
@@ -159,12 +176,4 @@
         app:layout_constraintHorizontal_bias="0.498"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <View
-        android:id="@+id/virtualTouchPad"
-        android:layout_width="match_parent"
-        android:layout_height="200dp"
-        android:background="@drawable/ic_launcher_background"
-        app:layout_constraintBottom_toTopOf="@+id/txtVirtualTouchPadLog"
-        app:layout_constraintTop_toBottomOf="@+id/btnScreenStream"
-        tools:layout_editor_absoluteX="19dp" />
 </androidx.constraintlayout.widget.ConstraintLayout>

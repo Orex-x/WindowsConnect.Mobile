@@ -3,6 +3,7 @@ package com.example.windowsconnect.service;
 import android.os.AsyncTask;
 
 import com.example.windowsconnect.interfaces.UdpReceiveListDeviceFragmentListener;
+import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.Host;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -70,10 +71,10 @@ public class UDPClient {
                     ObjectMapper mapper = new ObjectMapper();
                     try {
                         Map<String, Object> map = mapper.readValue(json, Map.class);
-                        String command = map.get("command").toString();
+                        int command = Integer.parseInt(map.get("command").toString());
 
                         switch (command){
-                            case "setHostInfo":
+                            case Command.setHostInfo:
                                 if(udpReceiveListDeviceFragmentListener != null){
                                     Map<String, Object> mapHost = (Map<String, Object>) map.get("value");
                                     Host host = new Host();
@@ -98,8 +99,8 @@ public class UDPClient {
     }
 
 
-    public String sendMessageWithReceive(String message){
-        SendMessageThreadWithReceive task = new SendMessageThreadWithReceive(message);
+    public String sendMessageWithReceive(String message, int command){
+        SendMessageThreadWithReceive task = new SendMessageThreadWithReceive(message, command);
         Thread thread = new Thread(task);
         thread.start();
         try {
@@ -113,28 +114,35 @@ public class UDPClient {
 
     class SendMessageThreadWithReceive extends Thread{
         String message;
+        int command;
         private volatile String value;
-        public SendMessageThreadWithReceive(String message){
+
+        public SendMessageThreadWithReceive(String message, int command){
             this.message = message;
+            this.command = command;
         }
         @Override
         public void run() {
             try {
                 byte[] lengthBuffer = new byte[4];
-                byte[] messageBytes = message.getBytes(StandardCharsets.UTF_8);
+
+                byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
+                reverse(command_buffer);
+                byte[] msg = UDPClient.join(command_buffer, message.getBytes(StandardCharsets.UTF_8));
+
 
                 DatagramSocket socket = new DatagramSocket(Settings.UDP_SEND_PORT);
                 InetAddress address = InetAddress.getByName(_ip);
 
                 //Send
-                DatagramPacket packet = new DatagramPacket(messageBytes, messageBytes.length, address, Settings.UDP_SEND_PORT);
+                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, Settings.UDP_SEND_PORT);
                 socket.send(packet);
 
                 //Receive
                 DatagramPacket packetLength = new DatagramPacket(lengthBuffer, lengthBuffer.length);
                 socket.receive(packetLength);
 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+                ByteBuffer byteBuffer = ByteBuffer.allocate(4);
                 byteBuffer.put(lengthBuffer);
                 byteBuffer.rewind();
                 int length = byteBuffer.getInt();
@@ -157,56 +165,125 @@ public class UDPClient {
         }
     }
 
-    public void sendMessage(String message){
-        new SendMessageThread(message).start();
+    public void sendMessage(String message, int command){
+        new SendMessageThread(message, command).start();
     }
 
-    class SendMessageThread extends Thread{
-        String message;
-        public SendMessageThread(String message){
+    public void prepare(){
+        new SendMessagePrepareThread().start();
+    }
+
+    public void close(){
+        new SendMessageCloseThread().start();
+    }
+
+    public void sendMessageWithoutClose(byte[] message, int command){
+        new SendMessageWithoutCloseThread(message, command).start();
+    }
+
+    public void sendMessageWithoutClose(byte[] message){
+        reverse(message);
+        new SendMessageWithoutCloseThread(message).start();
+    }
+
+    private DatagramSocket _socketWithoutClose;
+    private InetAddress _addressWithoutClose;
+    class SendMessagePrepareThread extends Thread{
+        @Override
+        public void run() {
+            try {
+
+                _socketWithoutClose = new DatagramSocket(Settings.UDP_SEND_PORT);
+                _addressWithoutClose = InetAddress.getByName(_ip);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    class SendMessageWithoutCloseThread extends Thread{
+        byte[] message;
+        int command;
+        public SendMessageWithoutCloseThread(byte[] message, int command){
+            this.message = message;
+            this.command = command;
+        }
+
+        public SendMessageWithoutCloseThread(byte[] message){
             this.message = message;
         }
         @Override
         public void run() {
             try {
-                byte[] msg = message.getBytes(StandardCharsets.UTF_8);
 
-                DatagramSocket socket = new DatagramSocket(Settings.UDP_SEND_PORT);
-                InetAddress address = InetAddress.getByName(_ip);
+                //byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
+               // reverse(command_buffer);
+               // byte[] msg = UDPClient.join(command_buffer, message);
 
-                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, Settings.UDP_SEND_PORT);
-
-                socket.send(packet);
-                socket.close();
+                DatagramPacket packet = new DatagramPacket(message, message.length, _addressWithoutClose, Settings.UDP_SEND_PORT);
+                _socketWithoutClose.send(packet);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
     }
 
-
-    public void sendMessage(byte[] data){
-        new AsyncSendBytes().execute(data);
-    }
-
-    private class AsyncSendBytes extends AsyncTask<byte[], Void, Void> {
+    class SendMessageCloseThread extends Thread{
         @Override
-        protected Void doInBackground(byte[]... bytes) {
+        public void run() {
             try {
+                _socketWithoutClose.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    class SendMessageThread extends Thread{
+        String message;
+        int command;
+        public SendMessageThread(String message, int command){
+            this.message = message;
+            this.command = command;
+        }
+        @Override
+        public void run() {
+            try {
+                byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
+                reverse(command_buffer);
+                byte[] msg = UDPClient.join(command_buffer, message.getBytes(StandardCharsets.UTF_8));
+
                 DatagramSocket socket = new DatagramSocket(Settings.UDP_SEND_PORT);
                 InetAddress address = InetAddress.getByName(_ip);
-
-                DatagramPacket packet = new DatagramPacket(bytes[0], bytes[0].length, address, Settings.UDP_SEND_PORT);
-
+                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, Settings.UDP_SEND_PORT);
                 socket.send(packet);
+
                 socket.close();
             } catch (Exception e) {
                 e.printStackTrace();
             }
-            return null;
         }
     }
 
+    // Метод объединения двух массивов в Java
+    public static byte[] join(byte[] a, byte[] b)
+    {
+        byte[] c = new byte[a.length + b.length];
+
+        System.arraycopy(a, 0, c, 0, a.length);
+        System.arraycopy(b, 0, c, a.length, b.length);
+
+        return c;
+    }
+
+    public static void reverse(byte[] data) {
+        for (int left = 0, right = data.length - 1; left < right; left++, right--) {
+            // swap the values at the left and right indices
+            byte temp = data[left];
+            data[left]  = data[right];
+            data[right] = temp;
+        }
+    }
 
     public void WakeUp(String macAddress){
         byte[] data = new byte[102];

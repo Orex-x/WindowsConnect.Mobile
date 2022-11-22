@@ -1,5 +1,7 @@
 package com.example.windowsconnect.service;
 
+import static com.example.windowsconnect.service.UDPClient.reverse;
+
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Device;
@@ -8,30 +10,37 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class AutoFinderHost {
     public static void Find(Device device){
-        String message = CommandHelper.createCommand(Command.requestAddDevice, device);
-        new MulticastPublisher(message).start();
+        String message = CommandHelper.toJson(device);
+        new MulticastPublisher(message, Command.requestAddDevice).start();
     }
 }
 
 class MulticastPublisher extends Thread{
     private DatagramSocket socket;
     private InetAddress group;
-    private byte[] buf;
     private String message;
+    private int command;
 
-    public MulticastPublisher(String message){
+    public MulticastPublisher(String message, int command){
         this.message = message;
+        this.command = command;
     }
 
     public void run() {
         try{
             socket = new DatagramSocket();
             group = InetAddress.getByName("230.0.0.0");
-            buf = message.getBytes();
-            DatagramPacket packet = new DatagramPacket(buf, buf.length, group, Settings.UDP_SEND_PORT);
+
+            byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
+            reverse(command_buffer);
+            byte[] msg = UDPClient.join(command_buffer, message.getBytes());
+
+            DatagramPacket packet = new DatagramPacket(msg, msg.length, group, Settings.UDP_SEND_PORT);
             socket.send(packet);
             socket.close();
         }catch (Exception e){

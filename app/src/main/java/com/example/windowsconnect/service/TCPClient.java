@@ -6,6 +6,7 @@ import android.os.AsyncTask;
 import androidx.annotation.NonNull;
 
 import com.example.windowsconnect.interfaces.ITCPClient;
+import com.example.windowsconnect.models.Command;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
@@ -21,6 +22,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.SocketAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -42,21 +44,21 @@ public class TCPClient {
     }
 
 
-    public void sendMessage(byte[] data) {
-        new TCPSendMessageThread(data).start();
+    public void sendMessage(byte[] data, int command) {
+        new TCPSendMessageThread(data, command).start();
     }
 
-    public void sendMessage(String message) {
+    public void sendMessage(String message, int command) {
         byte[] data = message.getBytes(StandardCharsets.UTF_8);
-        new TCPSendMessageThread(data).start();
+        new TCPSendMessageThread(data, command).start();
     }
 
     public void sendMessage(InputStream stream, long l) {
         new TCPSendMessageThreadStream(stream, l).start();
     }
 
-    public String sendMessageWithReceived(byte[] data) {
-        TCPSendMessageWithRespondThread tcp = new TCPSendMessageWithRespondThread(data);
+    public String sendMessageWithReceived(byte[] data, int command) {
+        TCPSendMessageWithRespondThread tcp = new TCPSendMessageWithRespondThread(data, command);
         Thread thread = new Thread(tcp);
         thread.start();
         try {
@@ -68,10 +70,10 @@ public class TCPClient {
         }
     }
 
-    public String sendMessageWithReceived(String message) {
+    public String sendMessageWithReceived(String message, int command) {
         byte[] data = message.getBytes(StandardCharsets.UTF_8);
 
-        TCPSendMessageWithRespondThread t = new TCPSendMessageWithRespondThread(data);
+        TCPSendMessageWithRespondThread t = new TCPSendMessageWithRespondThread(data, command);
         Thread thread = new Thread(t);
         thread.start();
         try {
@@ -137,10 +139,10 @@ public class TCPClient {
                     ObjectMapper mapper = new ObjectMapper();
                     try {
                         Map<String, Object> map = mapper.readValue(json, Map.class);
-                        String command = map.get("command").toString();
+                        int command = Integer.parseInt(map.get("command").toString());
 
                         switch (command) {
-                            case "setWallpaper":
+                            case Command.setWallpaper:
                                 if (_tcpClientListener != null) {
                                     String dataString = map.get("value").toString();
                                     _tcpClientListener.setWallPaper(dataString);
@@ -151,7 +153,11 @@ public class TCPClient {
                         System.out.println("Пришло сообщение не json вида: " + json);
                         e.printStackTrace();
                     }
-                } catch (Exception e) {
+                }catch (SocketException e) {
+                    e.printStackTrace();
+                    break;
+                }
+                catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -160,17 +166,20 @@ public class TCPClient {
 
     private class TCPSendMessageThread extends Thread {
         byte[] data;
-
-        public TCPSendMessageThread(byte[] data){
+        int command;
+        public TCPSendMessageThread(byte[] data, int command){
             this.data = data;
+            this.command = command;
         }
 
         @Override
         public void run() {
             super.run();
-            byte[] packet_length  = ByteBuffer.allocate(4).putInt(data.length).array();
+            byte[] packet_length = ByteBuffer.allocate(4).putInt(data.length).array();
+            byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
             try {
                 _outputStream.write(packet_length, 0, packet_length.length);
+                _outputStream.write(command_buffer, 0, command_buffer.length);
                 _outputStream.write(data, 0, data.length);
             } catch (IOException e) {
                 e.printStackTrace();
@@ -219,16 +228,19 @@ public class TCPClient {
     public class TCPSendMessageWithRespondThread implements Runnable {
         private volatile String value;
         byte[] data;
-        public TCPSendMessageWithRespondThread(byte[] data){
+        int command;
+        public TCPSendMessageWithRespondThread(byte[] data, int command){
             this.data = data;
+            this.command = command;
         }
 
         @Override
         public void run() {
-            byte[] headerBuffer = new byte[4];
             byte[] packet_length  = ByteBuffer.allocate(4).putInt(data.length).array();
+            byte[] command_buffer  = ByteBuffer.allocate(4).putInt(command).array();
             try {
                 _outputStream.write(packet_length, 0, packet_length.length);
+                _outputStream.write(command_buffer, 0, command_buffer.length);
                 _outputStream.write(data, 0, data.length);
                 _outputStream.flush();
                 /*int bytesReceived =  _inputStream.read(headerBuffer, 0, 4);
