@@ -37,10 +37,12 @@ public class HostAdapter extends ArrayAdapter<Host> {
 
         TextView txtName = view.findViewById(R.id.txtName);
         TextView txtIpMacAddress = view.findViewById(R.id.txtIpMacAddress);
+        TextView txtStatus = view.findViewById(R.id.txtStatus);
         Host host = hosts.get(position);
 
         txtName.setText(host.getName());
         txtIpMacAddress.setText(host.getLocalIP() + "/" + host.getMacAddress());
+        txtStatus.setText(host.getStatus());
 
         view.setOnClickListener(view1 -> {
             _listener.click(position);

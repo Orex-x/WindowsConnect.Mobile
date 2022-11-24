@@ -46,7 +46,7 @@ public class Settings {
     private static Device _device;
     public static Device getDevice(){
         if(_device == null){
-            _device = new Device(android.os.Build.MODEL, getIPAddress(true) ,new Date());
+            _device = new Device(android.os.Build.MODEL, getIPAddress(true), new Date());
         }
         return _device;
     }

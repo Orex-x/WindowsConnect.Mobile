@@ -34,6 +34,7 @@ public class Command{
     public static final int playStepasSound = 6;
     public static final int saveFile = 7;
     public static final int virtualTouchPadChanged = 8;
+    public static final int closeConnection = 9;
 }
 
 

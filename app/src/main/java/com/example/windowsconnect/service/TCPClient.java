@@ -28,19 +28,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 public class TCPClient {
-    private static ITCPClient _tcpClientListener;
 
+    private ITCPClient _tcpClientListener;
     private Socket _clientSocket = null;
     private OutputStream _outputStream = null;
     private InputStream _inputStream = null;
-    private BufferedReader _bufferedReader = null;
-    private ServerSocket _serverSocket = null;
+    private Thread _threadReceived;
 
 
     public TCPClient(ITCPClient l, String ip) {
         _tcpClientListener = l;
         new TCPRegister(ip).start();
+    }
 
+    public boolean dispose(){
+        _threadReceived.interrupt();
+        try {
+            _clientSocket.close();
+            _outputStream.close();
+            _inputStream.close();
+            _tcpClientListener = null;
+        } catch (IOException e) {
+            return false;
+        }
+        return true;
     }
 
 
@@ -100,7 +111,8 @@ public class TCPClient {
                 _clientSocket = new Socket(ip, Settings.TCP_PORT);
                 _outputStream = _clientSocket.getOutputStream();
                 _inputStream = _clientSocket.getInputStream();
-                new TCPReceivedThread().start();
+                _threadReceived = new TCPReceivedThread();
+                _threadReceived.start();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -112,7 +124,7 @@ public class TCPClient {
         @Override
         public void run() {
             byte[] headerBuffer = new byte[4];
-            while (true) {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
                     int bytesReceived =  _inputStream.read(headerBuffer, 0, 4);
                     if (bytesReceived != 4)
@@ -146,6 +158,11 @@ public class TCPClient {
                                 if (_tcpClientListener != null) {
                                     String dataString = map.get("value").toString();
                                     _tcpClientListener.setWallPaper(dataString);
+                                }
+                                break;
+                            case Command.closeConnection:
+                                if (_tcpClientListener != null) {
+                                    _tcpClientListener.closeConnection();
                                 }
                                 break;
                         }

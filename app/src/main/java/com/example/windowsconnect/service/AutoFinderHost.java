@@ -5,6 +5,7 @@ import static com.example.windowsconnect.service.UDPClient.reverse;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Device;
+import com.example.windowsconnect.models.Host;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -12,6 +13,7 @@ import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 public class AutoFinderHost {
     public static void Find(Device device){

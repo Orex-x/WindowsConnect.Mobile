@@ -5,8 +5,17 @@ public class Host {
     public String localIP;
     public String name;
     public String macAddress;
+    public String status;
 
     public Host() {
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     public Host(int port, String localIP, String name, String macAddress) {
@@ -14,6 +23,7 @@ public class Host {
         this.localIP = localIP;
         this.name = name;
         this.macAddress = macAddress;
+        this.status = "";
     }
 
     public int getPort() {

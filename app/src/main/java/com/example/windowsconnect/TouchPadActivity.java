@@ -1,36 +1,27 @@
 package com.example.windowsconnect;
 
-import static com.example.windowsconnect.MainActivity._udpClient;
+import static com.example.windowsconnect.MainActivity._host;
 import static com.example.windowsconnect.MainActivity._tcpClient;
+import static com.example.windowsconnect.MainActivity._udpClient;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.MotionEventCompat;
 
 import android.content.pm.ActivityInfo;
 import android.os.Bundle;
-import android.os.Handler;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.Window;
 import android.view.WindowManager;
 import android.widget.TextView;
 
+import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.models.Command;
-import com.example.windowsconnect.models.CommandHelper;
 
 import java.nio.ByteBuffer;
 
-public class TouchPadActivity extends AppCompatActivity {
+public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
 
     private View _virtualTouchPad;
-
-
-    //для виртуального тачпада
-    static int countClick = 0;
-    static boolean click = false;
-    static boolean multiClick = false;
-    static boolean multiTouchUp = false;
-
     TextView txtLog;
 
     @Override
@@ -48,7 +39,8 @@ public class TouchPadActivity extends AppCompatActivity {
         _virtualTouchPad = findViewById(R.id.virtualTouchPad);
         txtLog = findViewById(R.id.txtLog);
 
-        _udpClient.prepare();
+
+        _udpClient.prepare(_host.localIP);
         _virtualTouchPad.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
@@ -71,5 +63,20 @@ public class TouchPadActivity extends AppCompatActivity {
                 return true;
             }
         });
+    }
+
+    @Override
+    public void setProgressUploadFile(int progress) {
+
+    }
+
+    @Override
+    public void setWallPaper(String data) {
+
+    }
+
+    @Override
+    public void closeConnection() {
+        onDestroy();
     }
 }

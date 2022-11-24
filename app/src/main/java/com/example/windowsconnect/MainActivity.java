@@ -90,9 +90,9 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private TextView _txtHostName;
     private TextView _txtVirtualTouchPadLog;
 
-    private Host _host;
+    public static Host _host;
 
-    private Handler handler, handlerProgressBar;
+    private Handler handler, handlerProgressBar, handlerConnectionClose;
 
     private static final int REQUEST_TAKE_DOCUMENT = 2;
 
@@ -170,12 +170,18 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             }
         };
 
+        handlerConnectionClose = new Handler() {
+            @Override
+            public void handleMessage(Message msg) {
+                _imageView.setImageResource(R.drawable.wallpaper);
+                _txtHostName.setText("Host:");
+                _btnDisconnect.setText("connect");
+                setViewListeners(false);
+                _host = null;
+            }
+        };
+
         _udpClient = new UDPClient();
-       // _udpClient.setConnected(true);
-       // _udpClient.setIp("192.168.0.103");
-
-       // setViewListeners();
-
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this, _udpClient);
@@ -183,19 +189,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         if(!_udpClient.isConnected()){
             _btnDisconnect.setText("Connect");
-            new Thread(){
-                @Override
-                public void run() {
-                    while (!_udpClient.isConnected()){
-                        AutoFinderHost.Find(Settings.getDevice());
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }.start();
         }else{
             _btnDisconnect.setText("Disconnect");
         }
@@ -283,7 +276,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 fragmentTransaction.replace(R.id.frame, listDeviceFragment, "LIST_FRAGMENT_TAG");
                 fragmentTransaction.commit();
             }else{
-                _udpClient = null;
+                closeConnection();
                 _btnDisconnect.setText("Connect");
             }
 
@@ -343,42 +336,50 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
 
 
-    public void setViewListeners(){
-        _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                _txtVolume.setText("Volume: " + i);
-                if(_udpClient.isConnected()){
-                    //тут надо исправить
-                    String json = CommandHelper.toJson(i);
-                    _udpClient.sendMessage(json, Command.changeVolume);
+    public void setViewListeners(boolean isActive){
+        if(isActive){
+            _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override
+                public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                    _txtVolume.setText("Volume: " + i);
+                    if(_udpClient.isConnected()){
+                        //тут надо исправить
+                        String json = CommandHelper.toJson(i);
+                        _udpClient.sendMessage(json, Command.changeVolume, _host.localIP);
+                    }
                 }
-            }
 
-            @Override
-            public void onStartTrackingTouch(SeekBar seekBar) {
+                @Override
+                public void onStartTrackingTouch(SeekBar seekBar) {
 
-            }
+                }
 
-            @Override
-            public void onStopTrackingTouch(SeekBar seekBar) {
+                @Override
+                public void onStopTrackingTouch(SeekBar seekBar) {
 
-            }
-        });
-        _btnPrint.setOnClickListener(v ->{
-            if(_host != null){
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.setType("*/*");
-                //String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
-                //intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
-                startActivityForResult(intent, REQUEST_TAKE_DOCUMENT);
-            }
-        });
+                }
+            });
 
-        _btnTouchPad.setOnClickListener(v -> {
-            Intent intent = new Intent(this, TouchPadActivity.class);
-            startActivity(intent);
-        });
+
+            _btnPrint.setOnClickListener(v ->{
+                if(_host != null){
+                    Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                    intent.setType("*/*");
+                    //String[] mimetypes = {"application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"};
+                    //intent.putExtra(Intent.EXTRA_MIME_TYPES, mimetypes);
+                    startActivityForResult(intent, REQUEST_TAKE_DOCUMENT);
+                }
+            });
+
+            _btnTouchPad.setOnClickListener(v -> {
+                Intent intent = new Intent(this, TouchPadActivity.class);
+                startActivity(intent);
+            });
+        }else{
+            _btnPrint.setOnClickListener(null);
+            _btnTouchPad.setOnClickListener(null);
+            _seekBarVolume.setOnSeekBarChangeListener(null);
+        }
     }
 
     private void scanCode() {
@@ -412,9 +413,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     @Override
     public void connectHost(Host host) {
-        _udpClient.setIp(host.localIP);
         String json = CommandHelper.toJson(Settings.getDevice());
-        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice));
+        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice, host.localIP));
 
         if(answer == 200){
             _host = host;
@@ -422,7 +422,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
 
-            setViewListeners();
+            setViewListeners(true);
             _btnDisconnect.setText("Disconnect");
             _txtHostName.setText("Host: " + host.getName());
             Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
@@ -450,6 +450,14 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         Message message = new Message();
         message.obj = bmp;
         handler.sendMessage(message);
+    }
+
+    @Override
+    public void closeConnection() {
+        _host = null;
+        _udpClient.setConnected(false);
+        _tcpClient.dispose();
+        handlerConnectionClose.sendMessage(new Message());
     }
 
     @Override

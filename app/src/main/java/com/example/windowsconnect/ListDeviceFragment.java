@@ -1,5 +1,6 @@
 package com.example.windowsconnect;
 
+import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -16,20 +17,16 @@ import android.widget.ProgressBar;
 import com.example.windowsconnect.adapters.HostAdapter;
 import com.example.windowsconnect.interfaces.HostAdapterListener;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
-import com.example.windowsconnect.interfaces.UdpReceiveListDeviceFragmentListener;
+import com.example.windowsconnect.interfaces.UdpListener;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.Settings;
 import com.example.windowsconnect.service.UDPClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Map;
 
 
-public class ListDeviceFragment extends Fragment implements HostAdapterListener, UdpReceiveListDeviceFragmentListener {
+public class ListDeviceFragment extends Fragment implements HostAdapterListener, UdpListener {
 
     ArrayList<Host> hosts = new ArrayList<>();
     ListView listView;
@@ -37,7 +34,7 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
     HostAdapter adapter;
     private ListDeviceFragmentListener _listener;
 
-    private Handler handler;
+    public Handler handler;
     private ProgressBar progress;
     private UDPClient _udpClient;
 
@@ -51,6 +48,19 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
                              Bundle savedInstanceState) {
         View v =  inflater.inflate(R.layout.fragment_list_hosts, container, false);
 
+        new Thread(){
+            @Override
+            public void run() {
+                while (!_udpClient.isConnected()){
+                    AutoFinderHost.Find(Settings.getDevice());
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }.start();
 
         listView = v.findViewById(R.id.recyclerView);
         btnScanQR = v.findViewById(R.id.btnScanQR);
@@ -88,4 +98,6 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
         hosts.add(host);
         handler.sendMessage(new Message());
     }
+
+
 }
