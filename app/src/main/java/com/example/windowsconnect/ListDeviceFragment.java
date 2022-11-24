@@ -98,6 +98,4 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
         hosts.add(host);
         handler.sendMessage(new Message());
     }
-
-
 }

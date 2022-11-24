@@ -7,6 +7,7 @@ import androidx.annotation.NonNull;
 
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.models.Command;
+import com.example.windowsconnect.supportListeners.TcpClientListenerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.BufferedReader;
@@ -29,15 +30,23 @@ import java.util.Map;
 
 public class TCPClient {
 
-    private ITCPClient _tcpClientListener;
+    private static TcpClientListenerSupport listeners = new TcpClientListenerSupport();
+
     private Socket _clientSocket = null;
     private OutputStream _outputStream = null;
     private InputStream _inputStream = null;
     private Thread _threadReceived;
 
+    public void addListener(ITCPClient listener) {
+        listeners.addListener(listener);
+    }
 
-    public TCPClient(ITCPClient l, String ip) {
-        _tcpClientListener = l;
+    public void removeListener(ITCPClient listener) {
+        listeners.removeListener(listener);
+    }
+
+
+    public TCPClient(String ip) {
         new TCPRegister(ip).start();
     }
 
@@ -47,7 +56,7 @@ public class TCPClient {
             _clientSocket.close();
             _outputStream.close();
             _inputStream.close();
-            _tcpClientListener = null;
+            listeners.removeAllListeners();
         } catch (IOException e) {
             return false;
         }
@@ -155,15 +164,11 @@ public class TCPClient {
 
                         switch (command) {
                             case Command.setWallpaper:
-                                if (_tcpClientListener != null) {
-                                    String dataString = map.get("value").toString();
-                                    _tcpClientListener.setWallPaper(dataString);
-                                }
+                                String dataString = map.get("value").toString();
+                                listeners.setWallPaper(dataString);
                                 break;
                             case Command.closeConnection:
-                                if (_tcpClientListener != null) {
-                                    _tcpClientListener.closeConnection();
-                                }
+                                listeners.closeConnection();
                                 break;
                         }
                     } catch (IOException e) {
@@ -227,10 +232,10 @@ public class TCPClient {
                 long count = 0;
                 while ((len = stream.read(buffer)) != -1) {
                     _outputStream.write(buffer, 0, len);
-                    _tcpClientListener.setProgressUploadFile((int)getProgress(length, count));
+                    listeners.setProgressUploadFile((int)getProgress(length, count));
                     count += len;
                 }
-                _tcpClientListener.setProgressUploadFile(0);
+                listeners.setProgressUploadFile(0);
             } catch (IOException e) {
                 e.printStackTrace();
             }

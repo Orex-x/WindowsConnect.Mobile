@@ -418,7 +418,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         if(answer == 200){
             _host = host;
-            _tcpClient = new TCPClient(this, host.localIP);
+            _tcpClient = new TCPClient( host.localIP);
+            _tcpClient.addListener(this);
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
 
