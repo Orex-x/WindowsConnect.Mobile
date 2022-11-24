@@ -2,9 +2,11 @@ package com.example.windowsconnect.service;
 
 import android.os.AsyncTask;
 
-import com.example.windowsconnect.interfaces.UdpListener;
+import com.example.windowsconnect.interfaces.ITCPClient;
+import com.example.windowsconnect.interfaces.IUDPClient;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.Host;
+import com.example.windowsconnect.supportListeners.UdpClientListenerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.DatagramPacket;
@@ -16,17 +18,18 @@ import java.util.Map;
 
 public class UDPClient {
 
+    private static UdpClientListenerSupport listeners = new UdpClientListenerSupport();
 
-    private boolean connected;
+    public void addListener(IUDPClient listener) {
+        listeners.addListener(listener);
+    }
 
-
-    private static UdpListener udpListener;
-    public static void setUdpReceiveListDeviceFragmentListener(UdpListener l){
-        udpListener = l;
+    public void removeListener(IUDPClient listener) {
+        listeners.removeListener(listener);
     }
 
 
-
+    private boolean connected;
     public boolean isConnected() {
         return connected;
     }
@@ -71,18 +74,23 @@ public class UDPClient {
                     try {
                         Map<String, Object> map = mapper.readValue(json, Map.class);
                         int command = Integer.parseInt(map.get("command").toString());
-
+                        Map<String, Object> mapHost = (Map<String, Object>) map.get("value");
+                        Host host = new Host();
                         switch (command){
                             case Command.setHostInfo:
-                                if(udpListener != null){
-                                    Map<String, Object> mapHost = (Map<String, Object>) map.get("value");
-                                    Host host = new Host();
-                                    host.port = Integer.parseInt(mapHost.get("port").toString());
-                                    host.localIP =  mapHost.get("localIP").toString();
-                                    host.name =  mapHost.get("name").toString();
-                                    host.macAddress =  mapHost.get("macAddress").toString();
-                                    udpListener.addHost(host);
-                                }
+                                host.port = Integer.parseInt(mapHost.get("port").toString());
+                                host.localIP =  mapHost.get("localIP").toString();
+                                host.name =  mapHost.get("name").toString();
+                                host.macAddress =  mapHost.get("macAddress").toString();
+                                listeners.addHost(host);
+
+                                break;
+                            case Command.openConnection:
+                                host.port = Integer.parseInt(mapHost.get("port").toString());
+                                host.localIP =  mapHost.get("localIP").toString();
+                                host.name =  mapHost.get("name").toString();
+                                host.macAddress =  mapHost.get("macAddress").toString();
+                                listeners.openConnection(host);
                                 break;
                         }
                         socket.close();

@@ -52,6 +52,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.windowsconnect.interfaces.ITCPClient;
+import com.example.windowsconnect.interfaces.IUDPClient;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
@@ -73,7 +74,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.util.Map;
 
-public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient {
+public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient, IUDPClient {
 
     private Button _btnDisconnect;
     private ImageButton _btnTouchPad;
@@ -153,9 +154,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         frame = findViewById(R.id.frame);
 
-
-
-
         handler = new Handler() {
             @Override
             public void handleMessage(Message msg) {
@@ -182,6 +180,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         };
 
         _udpClient = new UDPClient();
+        _tcpClient = new TCPClient();
+        _udpClient.addListener(this);
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this, _udpClient);
@@ -418,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         if(answer == 200){
             _host = host;
-            _tcpClient = new TCPClient( host.localIP);
+           // _tcpClient = new TCPClient(host.localIP);
             _tcpClient.addListener(this);
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
@@ -429,6 +429,32 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
         }else{
             Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void addHost(Host host) {
+
+    }
+
+    @Override
+    public void openConnection(Host host) {
+        String json = CommandHelper.toJson(Settings.getDevice());
+        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice, host.localIP));
+
+        if(answer == 200){
+            _host = host;
+             _tcpClient = new TCPClient(host.localIP);
+            _tcpClient.addListener(this);
+            _udpClient.setConnected(true);
+            frame.setVisibility(View.GONE);
+
+            setViewListeners(true);
+            _btnDisconnect.setText("Disconnect");
+            _txtHostName.setText("Host: " + host.getName());
+           // Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+        }else{
+          //  Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -459,6 +485,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _udpClient.setConnected(false);
         _tcpClient.dispose();
         handlerConnectionClose.sendMessage(new Message());
+        _tcpClient = new TCPClient();
     }
 
     @Override

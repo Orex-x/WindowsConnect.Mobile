@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -47,7 +48,11 @@ public class TCPClient {
 
 
     public TCPClient(String ip) {
-        new TCPRegister(ip).start();
+        new TCPRegisterWithIp(ip).start();
+    }
+
+    public TCPClient(){
+        new TCPRegisterWithOutIp().start();
     }
 
     public boolean dispose(){
@@ -106,11 +111,11 @@ public class TCPClient {
     }
 
 
-    public class TCPRegister extends Thread {
+    public class TCPRegisterWithIp extends Thread {
 
         private String ip;
 
-        public TCPRegister(String ip) {
+        public TCPRegisterWithIp(String ip) {
             this.ip = ip;
         }
 
@@ -128,14 +133,45 @@ public class TCPClient {
         }
     }
 
+    public class TCPRegisterWithOutIp extends Thread {
 
-    public class TCPReceivedThread extends Thread {
+        @Override
+        public void run() {
+            while (true){
+                try {
+                    ServerSocket socket = new ServerSocket(Settings.TCP_PORT);
+                    _clientSocket = socket.accept();
+                    _outputStream = _clientSocket.getOutputStream();
+                    _inputStream = _clientSocket.getInputStream();
+                    _threadReceived = new TCPReceivedThreadWithOutIp();
+                    _threadReceived.start();
+                    break;
+                } catch (IOException e) {
+                    try {
+                        e.printStackTrace();
+                        Thread.sleep(5000);
+                    } catch (InterruptedException ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            }
+        }
+    }
+
+    public class TCPReceivedThreadWithOutIp extends Thread {
         @Override
         public void run() {
             byte[] headerBuffer = new byte[4];
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     int bytesReceived =  _inputStream.read(headerBuffer, 0, 4);
+
+                    if (bytesReceived == -1)
+                    {
+                        listeners.closeConnection();
+                        break;
+                    }
+
                     if (bytesReceived != 4)
                         continue;
 
@@ -159,7 +195,72 @@ public class TCPClient {
 
                     ObjectMapper mapper = new ObjectMapper();
                     try {
-                        Map<String, Object> map = mapper.readValue(json, Map.class);
+                        Map<String, Object> map = mapper.readValue(json, Map.class); // иногда тут вываливается stack size 1043KB
+                        int command = Integer.parseInt(map.get("command").toString());
+
+                        switch (command) {
+                            case Command.setWallpaper:
+                                String dataString = map.get("value").toString();
+                                listeners.setWallPaper(dataString);
+                                break;
+                            case Command.closeConnection:
+                                listeners.closeConnection();
+                                break;
+                        }
+                    } catch (IOException e) {
+                        System.out.println("Пришло сообщение не json вида: " + json);
+                        e.printStackTrace();
+                    }
+                }catch (SocketException e) {
+                    e.printStackTrace();
+                    break;
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+
+    public class TCPReceivedThread extends Thread {
+        @Override
+        public void run() {
+            byte[] headerBuffer = new byte[4];
+            while (!Thread.currentThread().isInterrupted()) {
+                try {
+                    int bytesReceived =  _inputStream.read(headerBuffer, 0, 4);
+
+                    if (bytesReceived == -1)
+                    {
+                        listeners.closeConnection();
+                        break;
+                    }
+
+                    if (bytesReceived != 4)
+                        continue;
+
+                    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+                    byteBuffer.put(headerBuffer);
+                    byteBuffer.rewind();
+                    int length = byteBuffer.getInt();
+
+                    byte[] buffer = new byte[length];
+
+                    int count = 0;
+                    do
+                    {
+                        bytesReceived = _inputStream.read(buffer, count, buffer.length - count);
+                        count += bytesReceived;
+                        if(count > length) break;
+                    }
+                    while (count != length);
+
+                    String json = new String(buffer, StandardCharsets.UTF_8);
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    try {
+                        Map<String, Object> map = mapper.readValue(json, Map.class); // иногда тут вываливается stack size 1043KB
                         int command = Integer.parseInt(map.get("command").toString());
 
                         switch (command) {

@@ -4,10 +4,12 @@ import static com.example.windowsconnect.MainActivity._host;
 import static com.example.windowsconnect.MainActivity._tcpClient;
 import static com.example.windowsconnect.MainActivity._udpClient;
 
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.MotionEventCompat;
 
 import android.content.pm.ActivityInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -25,6 +27,7 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
 
     private View _virtualTouchPad;
     TextView txtLog;
+    TextView txtLog2;
     private Handler handlerDestroy;
 
     @Override
@@ -34,6 +37,7 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
         super.onDestroy();
     }
 
+    @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
@@ -47,12 +51,11 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
                 onDestroy();
             }
         };
-
-//        _tcpClient.addListener(this);
+       _tcpClient.addListener(this);
 
         _virtualTouchPad = findViewById(R.id.virtualTouchPad);
         txtLog = findViewById(R.id.txtLog);
-
+        txtLog2 = findViewById(R.id.txtLog2);
 
         _udpClient.prepare(_host.localIP);
 
@@ -62,21 +65,23 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
 
                 StringBuilder stringBuilder = new StringBuilder();
                 int actionEvent = event.getAction();
+                int x = (int) event.getX();
+                int y = (int) event.getY();
                 int pointer = event.getPointerCount();
-                stringBuilder.append("action " + actionEvent + "pointer " + pointer);
+                stringBuilder.append("action " + actionEvent + " pointer " + pointer);
+                stringBuilder.append("\n");
+                stringBuilder.append("mask " + event.getActionMasked() + " index " + event.getActionIndex());
                 stringBuilder.append("\n");
 
                 for(int i = 0; i < event.getPointerCount(); i++){
-                    int x = (int) event.getX(i);
-                    int y = (int) event.getY(i);
+                    int xi = (int) event.getX(i);
+                    int yi = (int) event.getY(i);
 
-                    stringBuilder.append("x" + i + " " + x + "y" + i + " " + y);
+                    stringBuilder.append("x" + i + " " + xi + "y" + i + " " + yi);
                     stringBuilder.append("\n");
                 }
 
-
-
-            /*    ByteBuffer byteBuffer = ByteBuffer.allocate(20);
+                ByteBuffer byteBuffer = ByteBuffer.allocate(20);
                 byteBuffer.putInt(x);
                 byteBuffer.putInt(y);
                 byteBuffer.putInt(actionEvent);
@@ -84,7 +89,7 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
                 byteBuffer.putInt(Command.virtualTouchPadChanged);
 
                 byte[] packet = byteBuffer.array();
-                _udpClient.sendMessageWithoutClose(packet);*/
+                _udpClient.sendMessageWithoutClose(packet);
 
                 txtLog.setText(stringBuilder.toString());
                 return true;
@@ -104,6 +109,6 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
 
     @Override
     public void closeConnection() {
-        handlerDestroy.sendMessage(new Message());
+       handlerDestroy.sendMessage(new Message());
     }
 }

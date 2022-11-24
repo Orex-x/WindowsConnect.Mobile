@@ -1,6 +1,5 @@
 package com.example.windowsconnect;
 
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -17,7 +16,7 @@ import android.widget.ProgressBar;
 import com.example.windowsconnect.adapters.HostAdapter;
 import com.example.windowsconnect.interfaces.HostAdapterListener;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
-import com.example.windowsconnect.interfaces.UdpListener;
+import com.example.windowsconnect.interfaces.IUDPClient;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.Settings;
@@ -26,7 +25,7 @@ import com.example.windowsconnect.service.UDPClient;
 import java.util.ArrayList;
 
 
-public class ListDeviceFragment extends Fragment implements HostAdapterListener, UdpListener {
+public class ListDeviceFragment extends Fragment implements HostAdapterListener, IUDPClient {
 
     ArrayList<Host> hosts = new ArrayList<>();
     ListView listView;
@@ -68,7 +67,7 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
         adapter = new HostAdapter(getContext(), R.layout.host_item ,hosts, this);
         listView.setAdapter(adapter);
 
-        _udpClient.setUdpReceiveListDeviceFragmentListener(this);
+        _udpClient.addListener(this);
 
         btnScanQR.setOnClickListener(view -> _listener.scanQR());
 
@@ -97,5 +96,10 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
         hosts.add(host);
         handler.sendMessage(new Message());
+    }
+
+    @Override
+    public void openConnection(Host host) {
+
     }
 }

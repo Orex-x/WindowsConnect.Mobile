@@ -10,4 +10,6 @@ public interface IListenerSupport <T> {
      * Удаляет ранее зарегистрированного прослушивателя
      */
     void removeListener(T listener);
+
+    void removeAllListeners();
 }

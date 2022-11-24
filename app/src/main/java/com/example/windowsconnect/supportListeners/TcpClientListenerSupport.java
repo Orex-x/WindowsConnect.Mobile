@@ -19,6 +19,7 @@ public class TcpClientListenerSupport implements ITCPClient, IListenerSupport<IT
         list.remove(listener);
     }
 
+    @Override
     public void removeAllListeners(){
         list.clear();
     }
