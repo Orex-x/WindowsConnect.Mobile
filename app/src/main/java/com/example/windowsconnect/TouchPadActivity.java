@@ -48,9 +48,10 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
         handlerDestroy = new Handler() {
             @Override
             public void handleMessage(Message msg) {
-                onDestroy();
+                onBackPressed();
             }
         };
+
        _tcpClient.addListener(this);
 
         _virtualTouchPad = findViewById(R.id.virtualTouchPad);

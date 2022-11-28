@@ -83,7 +83,6 @@ public class UDPClient {
                                 host.name =  mapHost.get("name").toString();
                                 host.macAddress =  mapHost.get("macAddress").toString();
                                 listeners.addHost(host);
-
                                 break;
                             case Command.openConnection:
                                 host.port = Integer.parseInt(mapHost.get("port").toString());
@@ -98,7 +97,10 @@ public class UDPClient {
                         e.printStackTrace();
                     }
 
-                } catch (IOException e) {
+                }catch (OutOfMemoryError e) {
+
+                }
+                catch (IOException e) {
                     e.printStackTrace();
                 }
             }
@@ -106,7 +108,7 @@ public class UDPClient {
     }
 
 
-    public String sendMessageWithReceive(String message, int command, String ip){
+    public String sendMessageWithReceive(String message, int command, String ip){ //сделать чтобы по истечению времени он забивал на ответ
         SendMessageThreadWithReceive task = new SendMessageThreadWithReceive(message, command, ip);
         Thread thread = new Thread(task);
         thread.start();
@@ -174,9 +176,15 @@ public class UDPClient {
         }
     }
 
-    public void sendMessage(String message, int command, String ip){
+    public synchronized void sendMessage(String message, int command, String ip){
         new SendMessageThread(message, command, ip).start();
     }
+
+    public synchronized void sendMessage(String message, int command, String ip, int port){
+        new SendMessageThread(message, command, ip, port).start();
+    }
+
+
 
     public void prepare(String ip){
         new SendMessagePrepareThread(ip).start();
@@ -249,14 +257,27 @@ public class UDPClient {
         }
     }
 
+
+
+
     class SendMessageThread extends Thread{
         String message;
         String ip;
         int command;
+        int port;
+
         public SendMessageThread(String message, int command, String ip){
             this.message = message;
             this.command = command;
             this.ip = ip;
+            port = -1;
+        }
+
+        public SendMessageThread(String message, int command, String ip, int port){
+            this.message = message;
+            this.command = command;
+            this.ip = ip;
+            this.port = port;
         }
         @Override
         public void run() {
@@ -264,12 +285,12 @@ public class UDPClient {
                 byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
                 reverse(command_buffer);
                 byte[] msg = UDPClient.join(command_buffer, message.getBytes(StandardCharsets.UTF_8));
-
-                DatagramSocket socket = new DatagramSocket(Settings.UDP_SEND_PORT);
+                if(port == -1)
+                    port = Settings.UDP_SEND_PORT;
+                DatagramSocket socket = new DatagramSocket(port);
                 InetAddress address = InetAddress.getByName(ip);
-                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, Settings.UDP_SEND_PORT);
+                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, port);
                 socket.send(packet);
-
                 socket.close();
             } catch (Exception e) {
                 e.printStackTrace();

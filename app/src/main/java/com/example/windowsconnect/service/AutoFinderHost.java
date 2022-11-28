@@ -1,5 +1,6 @@
 package com.example.windowsconnect.service;
 
+import static com.example.windowsconnect.MainActivity._udpClient;
 import static com.example.windowsconnect.service.UDPClient.reverse;
 
 import com.example.windowsconnect.models.Command;
@@ -12,13 +13,19 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.MulticastSocket;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class AutoFinderHost {
     public static void Find(Device device){
         String message = CommandHelper.toJson(device);
         new MulticastPublisher(message, Command.requestAddDevice).start();
+    }
+
+    public static void RequestOpenConnection(Device device, ArrayList<Host> hosts){
+        String message = CommandHelper.toJson(device);
+        for (Host host : hosts) {
+            _udpClient.sendMessage(message, Command.requestConnectDevice, host.localIP);
+        }
     }
 }
 

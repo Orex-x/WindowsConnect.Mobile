@@ -85,7 +85,7 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
     @Override
     public void click(int position) {
         Host host = hosts.get(position);
-        _listener.connectHost(host);
+        _listener.requestConnectHost(host);
     }
 
     @Override
@@ -100,6 +100,6 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
     @Override
     public void openConnection(Host host) {
-
+        //реазируется в mainActivity (потом исправлю)
     }
 }

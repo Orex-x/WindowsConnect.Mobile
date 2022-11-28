@@ -1,14 +1,10 @@
 package com.example.windowsconnect;
 
-import static android.content.ContentValues.TAG;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
-import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
-import androidx.core.view.MotionEventCompat;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
@@ -40,7 +36,6 @@ import android.os.Message;
 import android.provider.OpenableColumns;
 import android.util.Base64;
 import android.util.DisplayMetrics;
-import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -58,9 +53,9 @@ import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.models.MyFile;
-import com.example.windowsconnect.models.Point;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.CaptureAct;
+import com.example.windowsconnect.service.Database;
 import com.example.windowsconnect.service.RecordService;
 import com.example.windowsconnect.service.Settings;
 import com.example.windowsconnect.service.TCPClient;
@@ -71,7 +66,7 @@ import com.journeyapps.barcodescanner.ScanOptions;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient, IUDPClient {
@@ -92,6 +87,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private TextView _txtVirtualTouchPadLog;
 
     public static Host _host;
+    Database databaseHelper;
+
 
     private Handler handler, handlerProgressBar, handlerConnectionClose;
 
@@ -137,6 +134,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         setContentView(R.layout.activity_main);
 
+        databaseHelper = new Database(this);
+
         _btnDisconnect = findViewById(R.id.btnDisconnectConnect);
         _btnSleep = findViewById(R.id.btnSleep);
         _btnWakeUp = findViewById(R.id.btnWakeUp);
@@ -180,8 +179,10 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         };
 
         _udpClient = new UDPClient();
-        _tcpClient = new TCPClient();
         _udpClient.addListener(this);
+
+        requestOpenConnection();
+
 
         if (listDeviceFragment == null) {
             listDeviceFragment = new ListDeviceFragment(this, _udpClient);
@@ -334,6 +335,24 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         }
     }
 
+    public void requestOpenConnection(){
+        ArrayList<Host> hosts = databaseHelper.getAllHosts();
+        if(hosts.size() > 0){
+            new Thread(){
+                @Override
+                public void run() {
+                    while (!_udpClient.isConnected()){
+                        AutoFinderHost.RequestOpenConnection(Settings.getDevice(), hosts);
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            }.start();
+        }
+    }
 
 
     public void setViewListeners(boolean isActive){
@@ -404,7 +423,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 String name = map.get("name").toString();
 
 
-                connectHost(new Host(hostPort, ip, name, macAddress));
+                requestConnectHost(new Host(hostPort, ip, name, macAddress));
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -412,21 +431,21 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     });
 
     @Override
-    public void connectHost(Host host) {
+    public void requestConnectHost(Host host) {
         String json = CommandHelper.toJson(Settings.getDevice());
-        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice, host.localIP));
+        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
 
         if(answer == 200){
             _host = host;
-           // _tcpClient = new TCPClient(host.localIP);
+            _tcpClient = new TCPClient(host.localIP);
             _tcpClient.addListener(this);
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
-
             setViewListeners(true);
             _btnDisconnect.setText("Disconnect");
             _txtHostName.setText("Host: " + host.getName());
             Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+            databaseHelper.insertHost(host);
         }else{
             Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
         }
@@ -434,29 +453,40 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     @Override
     public void addHost(Host host) {
-
+        //реализуется во фрагменте ListDevice (передаю потом нормально)
     }
 
     @Override
     public void openConnection(Host host) {
-        String json = CommandHelper.toJson(Settings.getDevice());
-        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.addDevice, host.localIP));
-
-        if(answer == 200){
+        try{
             _host = host;
-             _tcpClient = new TCPClient(host.localIP);
+            _tcpClient = new TCPClient(host.localIP);
             _tcpClient.addListener(this);
             _udpClient.setConnected(true);
             frame.setVisibility(View.GONE);
-
             setViewListeners(true);
             _btnDisconnect.setText("Disconnect");
             _txtHostName.setText("Host: " + host.getName());
-           // Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
-        }else{
-          //  Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
+            //Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
+            _udpClient.sendMessage("200", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
+        }catch (Exception ex){
+            try{
+                _udpClient.sendMessage("500", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
+            }catch (Exception ex2){
+
+            }
         }
     }
+
+    @Override
+    public void closeConnection() {
+        _host = null;
+        _udpClient.setConnected(false);
+        _tcpClient.dispose();
+        handlerConnectionClose.sendMessage(new Message());
+        requestOpenConnection();
+    }
+
 
     @Override
     public void scanQR() {
@@ -479,14 +509,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         handler.sendMessage(message);
     }
 
-    @Override
-    public void closeConnection() {
-        _host = null;
-        _udpClient.setConnected(false);
-        _tcpClient.dispose();
-        handlerConnectionClose.sendMessage(new Message());
-        _tcpClient = new TCPClient();
-    }
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {

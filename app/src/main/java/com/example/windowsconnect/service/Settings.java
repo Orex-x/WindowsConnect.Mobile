@@ -1,5 +1,10 @@
 package com.example.windowsconnect.service;
 
+import android.annotation.SuppressLint;
+import android.content.Context;
+import android.net.wifi.WifiInfo;
+import android.net.wifi.WifiManager;
+
 import com.example.windowsconnect.models.Device;
 
 import java.net.InetAddress;
@@ -43,6 +48,30 @@ public class Settings {
         return "";
     }
 
+    public static String getMacAddress() {
+        try {
+            List<NetworkInterface> all = Collections.list(NetworkInterface.getNetworkInterfaces());
+            for (NetworkInterface nif : all) {
+                if (!nif.getName().equalsIgnoreCase("wlan0")) continue;
+                byte[] macBytes = nif.getHardwareAddress();
+                if (macBytes == null) {
+                    return "";
+                }
+                StringBuilder res1 = new StringBuilder();
+                for (byte b : macBytes) {
+                    res1.append(Integer.toHexString(b & 0xFF) + ":");
+                  //  res1.append(String.format("%02X:",b));
+                }
+                if (res1.length() > 0) {
+                    res1.deleteCharAt(res1.length() - 1);
+                }
+                return res1.toString();
+            }
+        } catch (Exception ex) {
+        }
+        return "";
+    }
+
     private static Device _device;
     public static Device getDevice(){
         if(_device == null){
@@ -52,6 +81,7 @@ public class Settings {
     }
     public static final int UDP_SEND_PORT = 5000;
     public static final int UDP_LISTEN_PORT = 5001;
+    public static final int UDP_SEND_WITH_RECEIVE_PORT = 5002;
     public static final int TCP_PORT = 5005;
 
 }

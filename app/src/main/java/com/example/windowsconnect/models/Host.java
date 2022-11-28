@@ -26,6 +26,18 @@ public class Host {
         this.status = "";
     }
 
+    public void setLocalIP(String localIP) {
+        this.localIP = localIP;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setMacAddress(String macAddress) {
+        this.macAddress = macAddress;
+    }
+
     public int getPort() {
         return port;
     }
