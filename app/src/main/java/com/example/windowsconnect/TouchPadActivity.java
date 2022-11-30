@@ -63,24 +63,10 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
         _virtualTouchPad.setOnTouchListener(new View.OnTouchListener() {
             @Override
             public boolean onTouch(View v, MotionEvent event) {
-
-                StringBuilder stringBuilder = new StringBuilder();
-                int actionEvent = event.getAction();
-                int x = (int) event.getX();
-                int y = (int) event.getY();
+                int x = (int)event.getX();
+                int y = (int)event.getY();
+                int actionEvent = MotionEventCompat.getActionMasked(event);
                 int pointer = event.getPointerCount();
-                stringBuilder.append("action " + actionEvent + " pointer " + pointer);
-                stringBuilder.append("\n");
-                stringBuilder.append("mask " + event.getActionMasked() + " index " + event.getActionIndex());
-                stringBuilder.append("\n");
-
-                for(int i = 0; i < event.getPointerCount(); i++){
-                    int xi = (int) event.getX(i);
-                    int yi = (int) event.getY(i);
-
-                    stringBuilder.append("x" + i + " " + xi + "y" + i + " " + yi);
-                    stringBuilder.append("\n");
-                }
 
                 ByteBuffer byteBuffer = ByteBuffer.allocate(20);
                 byteBuffer.putInt(x);
@@ -92,7 +78,7 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
                 byte[] packet = byteBuffer.array();
                 _udpClient.sendMessageWithoutClose(packet);
 
-                txtLog.setText(stringBuilder.toString());
+                txtLog.setText("x " + x + "y " + y + "action " + actionEvent + "pointer " + pointer);
                 return true;
             }
         });
