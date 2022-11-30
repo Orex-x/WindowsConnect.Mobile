@@ -25,23 +25,30 @@ public class TcpClientListenerSupport implements ITCPClient, IListenerSupport<IT
     }
 
     @Override
-    public void setProgressUploadFile(int progress) {
+    public synchronized void setProgressUploadFile(int progress) {
         for (ITCPClient i : list) {
             i.setProgressUploadFile(progress);
         }
     }
 
     @Override
-    public void setWallPaper(String data) {
+    public synchronized void setWallPaper(String data) {
         for (ITCPClient i : list) {
             i.setWallPaper(data);
         }
     }
 
     @Override
-    public void closeConnection() {
+    public synchronized void closeConnection() {
        for(int i = list.size()-1; i>=0; i--){
            list.get(i).closeConnection();
+       }
+    }
+
+    @Override
+    public synchronized void removeHostFromList() {
+       for(int i = list.size()-1; i>=0; i--){
+           list.get(i).removeHostFromList();
        }
     }
 }

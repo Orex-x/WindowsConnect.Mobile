@@ -84,7 +84,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
     private TextView _txtHostName;
-    private TextView _txtVirtualTouchPadLog;
 
     public static Host _host;
     Database databaseHelper;
@@ -146,8 +145,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
-
-        _txtVirtualTouchPadLog = findViewById(R.id.txtVirtualTouchPadLog);
 
         _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
 
@@ -277,6 +274,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 fragmentTransaction.replace(R.id.frame, listDeviceFragment, "LIST_FRAGMENT_TAG");
                 fragmentTransaction.commit();
             }else{
+                removeHostFromList();
                 closeConnection();
                 _btnDisconnect.setText("Connect");
             }
@@ -436,25 +434,12 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
 
         if(answer == 200){
-            _host = host;
-            _tcpClient = new TCPClient(host.localIP);
-            _tcpClient.addListener(this);
-            _udpClient.setConnected(true);
-            frame.setVisibility(View.GONE);
-            setViewListeners(true);
-            _btnDisconnect.setText("Disconnect");
-            _txtHostName.setText("Host: " + host.getName());
-            Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
             databaseHelper.insertHost(host);
         }else{
             Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
         }
     }
 
-    @Override
-    public void addHost(Host host) {
-        //реализуется во фрагменте ListDevice (передаю потом нормально)
-    }
 
     @Override
     public void openConnection(Host host) {
@@ -463,12 +448,15 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             _tcpClient = new TCPClient(host.localIP);
             _tcpClient.addListener(this);
             _udpClient.setConnected(true);
-            frame.setVisibility(View.GONE);
             setViewListeners(true);
-            _btnDisconnect.setText("Disconnect");
-            _txtHostName.setText("Host: " + host.getName());
-            //Toast.makeText(this, "Подключение успешно", Toast.LENGTH_SHORT).show();
             _udpClient.sendMessage("200", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
+            Message message = new Message();
+            message.obj = host.getName();
+            runOnUiThread(() -> {
+                frame.setVisibility(View.GONE);
+                _btnDisconnect.setText("Disconnect");
+                _txtHostName.setText("Host: " + host.getName());
+            });
         }catch (Exception ex){
             try{
                 _udpClient.sendMessage("500", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
@@ -477,6 +465,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             }
         }
     }
+
 
     @Override
     public void closeConnection() {
@@ -487,6 +476,16 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         requestOpenConnection();
     }
 
+    @Override
+    public void removeHostFromList() {
+        databaseHelper.deleteHost(_host.name);
+    }
+
+
+    @Override
+    public void addHost(Host host) {
+        //реализуется во фрагменте ListDevice (передаю потом нормально)
+    }
 
     @Override
     public void scanQR() {

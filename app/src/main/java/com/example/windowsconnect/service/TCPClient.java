@@ -137,7 +137,7 @@ public class TCPClient {
             byte[] headerBuffer = new byte[4];
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    int bytesReceived =  _inputStream.read(headerBuffer, 0, 4);
+                    int bytesReceived = _inputStream.read(headerBuffer, 0, 4);
 
                     if (bytesReceived == -1)
                     {
@@ -177,6 +177,7 @@ public class TCPClient {
                                 listeners.setWallPaper(dataString);
                                 break;
                             case Command.closeConnection:
+                                listeners.removeHostFromList();
                                 listeners.closeConnection();
                                 break;
                         }

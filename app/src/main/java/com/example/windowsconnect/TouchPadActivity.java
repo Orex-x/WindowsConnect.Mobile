@@ -112,4 +112,9 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
     public void closeConnection() {
        handlerDestroy.sendMessage(new Message());
     }
+
+    @Override
+    public void removeHostFromList() {
+
+    }
 }

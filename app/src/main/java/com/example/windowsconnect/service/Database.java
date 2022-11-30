@@ -78,10 +78,10 @@ public class Database extends SQLiteOpenHelper {
     public boolean deleteHost(String name){
         try{
             SQLiteDatabase db = this.getWritableDatabase();
-            db.execSQL("DELETE FROM " + TABLE_HOST + " WHERE " + COLUMN_NAME + " = " + name + ";");
+            db.execSQL("DELETE FROM " + TABLE_HOST + " WHERE " + COLUMN_NAME + " = '" + name + "';");
             return true;
         }catch (Exception e){
-
+            e.printStackTrace();
         }
         return false;
     }
