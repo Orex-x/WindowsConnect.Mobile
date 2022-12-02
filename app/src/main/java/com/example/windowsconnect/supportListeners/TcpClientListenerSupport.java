@@ -51,5 +51,12 @@ public class TcpClientListenerSupport implements ITCPClient, IListenerSupport<IT
            list.get(i).removeHostFromList();
        }
     }
+
+    @Override
+    public void setTextClipBoard(String text) {
+        for (ITCPClient i : list) {
+            i.setTextClipBoard(text);
+        }
+    }
 }
 

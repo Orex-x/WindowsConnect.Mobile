@@ -1,6 +1,7 @@
 package com.example.windowsconnect.service;
 
 import android.os.AsyncTask;
+import android.os.Build;
 
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.IUDPClient;
@@ -12,9 +13,11 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class UDPClient {
 
@@ -108,7 +111,29 @@ public class UDPClient {
     }
 
 
-    public String sendMessageWithReceive(String message, int command, String ip){ //сделать чтобы по истечению времени он забивал на ответ
+    public class MyRun extends AsyncTask<SendMessageThreadWithReceive, Void, String> {
+
+        @Override
+        protected String doInBackground(SendMessageThreadWithReceive... sendMessageThreadWithReceives) {
+            SendMessageThreadWithReceive task = sendMessageThreadWithReceives[0];
+            Thread thread = new Thread(task);
+            thread.start();
+            try {
+                thread.join();
+                return task.getValue();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                return e.getMessage();
+            }
+        }
+
+        @Override
+        protected void onPostExecute(String s) {
+            super.onPostExecute(s);
+        }
+    }
+
+    public String sendMessageWithReceive(String message, int command, String ip){
         SendMessageThreadWithReceive task = new SendMessageThreadWithReceive(message, command, ip);
         Thread thread = new Thread(task);
         thread.start();
@@ -121,7 +146,7 @@ public class UDPClient {
         }
     }
 
-    class SendMessageThreadWithReceive extends Thread{
+    public class SendMessageThreadWithReceive extends Thread{
         String message;
         String ip;
         int command;
@@ -149,9 +174,18 @@ public class UDPClient {
                 DatagramPacket packet = new DatagramPacket(msg, msg.length, address, Settings.UDP_SEND_PORT);
                 socket.send(packet);
 
+
                 //Receive
+                socket.setSoTimeout(5000);
                 DatagramPacket packetLength = new DatagramPacket(lengthBuffer, lengthBuffer.length);
-                socket.receive(packetLength);
+
+                try {
+                    socket.receive(packetLength);
+                } catch (SocketTimeoutException e) {
+                    value = "500";
+                    socket.close();
+                    return;
+                }
 
                 ByteBuffer byteBuffer = ByteBuffer.allocate(4);
                 byteBuffer.put(lengthBuffer);

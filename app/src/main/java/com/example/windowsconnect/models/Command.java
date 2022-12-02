@@ -1,29 +1,5 @@
 package com.example.windowsconnect.models;
 
-/*
-public enum Command{
-    changeVolume,
-    addDevice,
-    sleep,
-    requestAddDevice,
-    setHostInfo,
-    setWallpaper,
-    playStepasSound,
-    saveFile,
-    virtualTouchPadChanged,
-
-    virtualSingleTouchDown,
-    virtualSingleTouchUp,
-    virtualSingleTouchMove,
-    virtualSingleTouchHookMove,
-    virtualSingleTouchRightClick,
-    virtualSingleTouchLeftClick,
-    virtualMultiTouchDown,
-    virtualMultiTouchUp,
-    virtualMultiTouchMove,
-}
-*/
-
 public class Command{
     public static final int changeVolume = 0;
     public static final int requestConnectDevice = 1;
@@ -36,6 +12,7 @@ public class Command{
     public static final int virtualTouchPadChanged = 8;
     public static final int closeConnection = 9;
     public static final int openConnection = 10;
+    public static final int setTextClipBoard = 11;
 
 }
 

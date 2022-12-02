@@ -28,6 +28,7 @@ import android.graphics.Color;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -55,6 +56,7 @@ import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.models.MyFile;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.CaptureAct;
+import com.example.windowsconnect.service.ClipboardService;
 import com.example.windowsconnect.service.Database;
 import com.example.windowsconnect.service.RecordService;
 import com.example.windowsconnect.service.Settings;
@@ -68,6 +70,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient, IUDPClient {
 
@@ -252,6 +255,9 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                     }
             );
         }
+
+
+
         _btnScreenStream.setOnClickListener(v ->{
             if (screenOn) {
                 screenOn = false;
@@ -430,14 +436,24 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     @Override
     public void requestConnectHost(Host host) {
-        String json = CommandHelper.toJson(Settings.getDevice());
-        int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
+       /* if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            CompletableFuture.runAsync(() -> {
+                String json = CommandHelper.toJson(Settings.getDevice());
+                int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
+                if(answer == 200){
+                    databaseHelper.insertHost(host);
+                }else{
+                   runOnUiThread(() ->
+                           Toast.makeText(
+                                   MainActivity.this,
+                                   "Конечный компьютер отверг подключение",
+                                   Toast.LENGTH_SHORT).show());
+                }
+            });
+        }*/
 
-        if(answer == 200){
-            databaseHelper.insertHost(host);
-        }else{
-            Toast.makeText(this, "Конечный компьютер отверг подключение", Toast.LENGTH_SHORT).show();
-        }
+        String json = CommandHelper.toJson(Settings.getDevice());
+        _udpClient.sendMessage(json, Command.requestConnectDevice, host.localIP);
     }
 
 
@@ -453,6 +469,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             Message message = new Message();
             message.obj = host.getName();
             runOnUiThread(() -> {
+                startService(new Intent(this, ClipboardService.class));
                 frame.setVisibility(View.GONE);
                 _btnDisconnect.setText("Disconnect");
                 _txtHostName.setText("Host: " + host.getName());
@@ -474,11 +491,19 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _tcpClient.dispose();
         handlerConnectionClose.sendMessage(new Message());
         requestOpenConnection();
+        runOnUiThread(() -> {
+            stopService(new Intent(this, ClipboardService.class));
+        });
     }
 
     @Override
     public void removeHostFromList() {
         databaseHelper.deleteHost(_host.name);
+    }
+
+    @Override
+    public void setTextClipBoard(String text) {
+
     }
 
 
@@ -524,7 +549,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                             long fileLength = getFileLength(uri);
                             MyFile myFile = new MyFile(getFileName(uri), fileLength);
                             String json = CommandHelper.toJson(myFile);
-                            _tcpClient.sendMessageWithReceived(json, Command.saveFile);
+                            _tcpClient.sendMessage(json, Command.saveFile);
                             _tcpClient.sendMessage(iStream, fileLength);
                         }
                     } catch (FileNotFoundException e) {

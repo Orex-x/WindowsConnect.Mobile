@@ -103,4 +103,9 @@ public class TouchPadActivity extends AppCompatActivity implements ITCPClient {
     public void removeHostFromList() {
 
     }
+
+    @Override
+    public void setTextClipBoard(String text) {
+
+    }
 }

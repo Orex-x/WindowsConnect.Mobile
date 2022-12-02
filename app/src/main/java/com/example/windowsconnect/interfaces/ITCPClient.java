@@ -5,4 +5,5 @@ public interface ITCPClient {
     void setWallPaper(String data);
     void closeConnection();
     void removeHostFromList();
+    void setTextClipBoard(String text);
 }
