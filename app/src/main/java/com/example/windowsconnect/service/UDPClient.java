@@ -111,28 +111,6 @@ public class UDPClient {
     }
 
 
-    public class MyRun extends AsyncTask<SendMessageThreadWithReceive, Void, String> {
-
-        @Override
-        protected String doInBackground(SendMessageThreadWithReceive... sendMessageThreadWithReceives) {
-            SendMessageThreadWithReceive task = sendMessageThreadWithReceives[0];
-            Thread thread = new Thread(task);
-            thread.start();
-            try {
-                thread.join();
-                return task.getValue();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-                return e.getMessage();
-            }
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            super.onPostExecute(s);
-        }
-    }
-
     public String sendMessageWithReceive(String message, int command, String ip){
         SendMessageThreadWithReceive task = new SendMessageThreadWithReceive(message, command, ip);
         Thread thread = new Thread(task);

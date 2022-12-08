@@ -21,7 +21,7 @@ public class Database extends SQLiteOpenHelper {
     public static final String COLUMN_MAC_ADDRESS = "macAddress";
 
     public Database(Context context) {
-        super(context, DATABASE_NAME, null, 6);
+        super(context, DATABASE_NAME, null, 1);
     }
 
     @Override

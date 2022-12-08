@@ -6,49 +6,81 @@
     android:layout_height="match_parent"
     tools:context=".TouchPadActivity">
 
-
-    <View
-        android:id="@+id/virtualTouchPad"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="visible"
-        android:background="@drawable/area"
-        android:layout_marginRight="5dp"
-        android:layout_marginLeft="5dp"
-        android:layout_marginTop="5dp"
-        android:layout_marginBottom="5dp"
-        tools:layout_editor_absoluteX="19dp" />
+        android:orientation="horizontal">
 
-    <ImageView
-        android:id="@+id/imageView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/icon_touchpad_2" />
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="80dp"
+            android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/txtLog"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView"
-        app:layout_constraintBottom_toTopOf="@+id/imageView2"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
 
-    <TextView
-        android:id="@+id/txtLog2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="TextView"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.501"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageView2"
-        app:layout_constraintVertical_bias="0.494" />
+            <LinearLayout
+                android:gravity="bottom"
+                android:paddingBottom="4dp"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical">
+
+                <Button
+                    android:id="@+id/btnESC"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="ESC" />
+
+                <Button
+                    android:id="@+id/btnTab"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="TAB" />
+
+                <Button
+                    android:id="@+id/btnCaps"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CAPS" />
+
+                <Button
+                    android:id="@+id/btnShift"
+                    android:layout_marginBottom="10dp"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="SHIFT" />
+
+                <Button
+                    android:id="@+id/btnCtrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="CTRL" />
+            </LinearLayout>
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent"
+                app:srcCompat="@drawable/icon_touchpad_2" />
+
+            <View
+                android:id="@+id/virtualTouchPad"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/dotted"
+                android:visibility="visible"
+                tools:layout_editor_absoluteX="5dp"
+                tools:layout_editor_absoluteY="5dp" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

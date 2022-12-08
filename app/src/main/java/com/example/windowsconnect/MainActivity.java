@@ -204,26 +204,27 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
         _btnScreenStream.setEnabled(false);
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-
             startMediaProjection = registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
                     result -> {
                         if (result.getResultCode() == Activity.RESULT_OK) {
-
-
-                            Intent activityIntent = new Intent(this, MainActivity.class);
+                            Intent activityIntent = new Intent(this,
+                                    MainActivity.class);
                             activityIntent.setAction("stop");
-                            PendingIntent contentIntent = PendingIntent.getActivity(this, 0, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
+                            PendingIntent contentIntent = PendingIntent.getActivity(this,
+                                    0, activityIntent, PendingIntent.FLAG_UPDATE_CURRENT);
 
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 
                                 String channelId = "001";
                                 String channelName = "myChannel";
-                                NotificationChannel channel = new NotificationChannel(channelId, channelName, NotificationManager.IMPORTANCE_NONE);
+                                NotificationChannel channel = new NotificationChannel(channelId,
+                                        channelName, NotificationManager.IMPORTANCE_NONE);
                                 channel.setLightColor(Color.BLUE);
                                 channel.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
 
-                                NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+                                NotificationManager manager = (NotificationManager)
+                                        getSystemService(Context.NOTIFICATION_SERVICE);
 
                                 if (manager != null) {
                                     manager.createNotificationChannel(channel);
@@ -236,7 +237,8 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                                             .setContentIntent(contentIntent)
                                             .build();
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                                        recordService.startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+                                        recordService.startForeground(1, notification,
+                                                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
                                     } else {
                                         recordService.startForeground(1, notification);
                                     }
@@ -246,7 +248,9 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                             }
 
                            new Handler().postDelayed(() -> {
-                               mediaProjection = projectionManager.getMediaProjection(result.getResultCode(), result.getData());
+                               mediaProjection =
+                                       projectionManager.getMediaProjection(result.getResultCode(),
+                                               result.getData());
                                recordService.setMediaProject(mediaProjection);
                                recordService.startRecord();
                                _btnScreenStream.setImageResource(R.drawable.air_play_on);
@@ -436,7 +440,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
 
     @Override
     public void requestConnectHost(Host host) {
-       /* if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             CompletableFuture.runAsync(() -> {
                 String json = CommandHelper.toJson(Settings.getDevice());
                 int answer = Integer.parseInt(_udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
@@ -450,10 +454,11 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                                    Toast.LENGTH_SHORT).show());
                 }
             });
-        }*/
+        }
 
-        String json = CommandHelper.toJson(Settings.getDevice());
+       /* String json = CommandHelper.toJson(Settings.getDevice());
         _udpClient.sendMessage(json, Command.requestConnectDevice, host.localIP);
+        databaseHelper.insertHost(host);*/
     }
 
 
@@ -601,8 +606,10 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 requestCode == READ_EXTERNAL_STORAGE_REQUEST_CODE ||
                 requestCode == WRITE_EXTERNAL_STORAGE_REQUEST_CODE ||
                 requestCode == FOREGROUND_SERVICE_REQUEST_CODE) {
-            if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
-                finish();
+            if(grantResults.length > 0){
+                if (grantResults[0] != PackageManager.PERMISSION_GRANTED) {
+                    finish();
+                }
             }
         }
     }
