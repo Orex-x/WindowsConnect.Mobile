@@ -13,9 +13,10 @@ public class Command{
     public static final int closeConnection = 9;
     public static final int openConnection = 10;
     public static final int setTextClipBoard = 11;
-    public static final int clickButtonCSCTE = 12;
-    public static final int downButtonCSCTE = 13;
-    public static final int upButtonCSCTE = 14;
+
+    public static final int keyboardPress = 12;
+    public static final int downKeyboardHardwareKeyPress = 13;
+    public static final int upKeyboardHardwareKeyPress = 14;
 }
 
 

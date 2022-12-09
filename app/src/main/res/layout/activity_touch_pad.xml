@@ -9,58 +9,11 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:orientation="horizontal">
-
-        <androidx.constraintlayout.widget.ConstraintLayout
-            android:layout_width="80dp"
-            android:layout_height="match_parent">
-
-
-            <LinearLayout
-                android:gravity="bottom"
-                android:paddingBottom="4dp"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:orientation="vertical">
-
-                <Button
-                    android:id="@+id/btnESC"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="ESC" />
-
-                <Button
-                    android:id="@+id/btnTab"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="TAB" />
-
-                <Button
-                    android:id="@+id/btnCaps"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="CAPS" />
-
-                <Button
-                    android:id="@+id/btnShift"
-                    android:layout_marginBottom="10dp"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="SHIFT" />
-
-                <Button
-                    android:id="@+id/btnCtrl"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="CTRL" />
-            </LinearLayout>
-        </androidx.constraintlayout.widget.ConstraintLayout>
+        android:orientation="vertical">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
+            android:paddingBottom="50dp"
             android:layout_height="match_parent">
 
             <ImageView
@@ -78,8 +31,104 @@
                 android:layout_height="match_parent"
                 android:background="@drawable/dotted"
                 android:visibility="visible"
+                android:layout_marginRight="10dp"
+                android:layout_marginLeft="10dp"
+                android:layout_marginTop="10dp"
                 tools:layout_editor_absoluteX="5dp"
                 tools:layout_editor_absoluteY="5dp" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_marginTop="-50dp"
+            android:layout_marginRight="10dp"
+            android:layout_marginLeft="10dp"
+            android:layout_height="50dp">
+
+            <LinearLayout
+                android:id="@+id/linearLayout2"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/edt"
+                    android:inputType="none"
+                    android:layout_width="1dp"
+                    android:layout_height="1dp"
+                    android:visibility="visible"
+                    />
+
+                <ImageButton
+                    android:id="@+id/btnKeyboard"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:src="@drawable/ic_baseline_keyboard_24" />
+
+                <Button
+                    android:id="@+id/btnESC"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="ESC" />
+
+                <Button
+                    android:id="@+id/btnTab"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="TAB" />
+
+                <Button
+                    android:id="@+id/btnCaps"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="CAPS" />
+
+                <Button
+                    android:id="@+id/btnShift"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="SHIFT" />
+
+                <Button
+                    android:id="@+id/btnCtrl"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="CTRL" />
+
+                <Button
+                    android:id="@+id/btnAlt"
+                    android:layout_width="60dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="ALT" />
+                <Button
+                    android:id="@+id/btnEnter"
+                    android:layout_width="80dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="Enter" />
+                <Button
+                    android:id="@+id/btnBackspace"
+                    android:layout_width="110dp"
+                    android:layout_height="match_parent"
+                    android:layout_marginBottom="5dp"
+                    android:layout_marginTop="5dp"
+                    android:text="Backspase" />
+            </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </LinearLayout>
 
