@@ -3,6 +3,7 @@ package com.example.windowsconnect.supportListeners;
 import com.example.windowsconnect.interfaces.IListenerSupport;
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.IUDPClient;
+import com.example.windowsconnect.interfaces.udp.IOpenConnection;
 import com.example.windowsconnect.models.Host;
 
 import java.util.ArrayList;

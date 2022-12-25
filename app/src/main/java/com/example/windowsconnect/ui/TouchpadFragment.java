@@ -1,74 +1,70 @@
-package com.example.windowsconnect;
+package com.example.windowsconnect.ui;
 
-import static android.view.KeyEvent.ACTION_UP;
-import static android.view.KeyEvent.KEYCODE_ALT_LEFT;
 import static android.view.KeyEvent.KEYCODE_DEL;
 import static android.view.KeyEvent.KEYCODE_ENTER;
 import static android.view.KeyEvent.KEYCODE_UNKNOWN;
-import static com.example.windowsconnect.core.Boot._host;
-import static com.example.windowsconnect.core.Boot._tcpClient;
-import static com.example.windowsconnect.core.Boot._udpClient;
 
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.view.MotionEventCompat;
 import android.annotation.SuppressLint;
 import android.content.Context;
-import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.LayoutInflater;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
-import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
+import androidx.annotation.NonNull;
+import androidx.core.view.MotionEventCompat;
+import androidx.fragment.app.Fragment;
+
+import com.example.windowsconnect.R;
 import com.example.windowsconnect.models.Command;
+
+import static com.example.windowsconnect.core.Boot._host;
+import static com.example.windowsconnect.core.Boot._tcpClient;
+import static com.example.windowsconnect.core.Boot._udpClient;
 
 import java.nio.ByteBuffer;
 
-public class TouchPadActivity extends AppCompatActivity {
+public class TouchpadFragment extends Fragment{
 
     private View _virtualTouchPad;
-
     private Button _btnESC, _btnTab, _btnCaps, _btnShift, _btnCtrl, _btnAlt, _btnEnter, _btnBackspace, _btnNextTrack;
     private ImageButton _btnKeyboard;
 
     @Override
-    protected void onDestroy() {
+    public void onDestroy() {
+       // _tcpClient.removeListener(this);
         _udpClient.close();
         super.onDestroy();
     }
 
-    @SuppressLint("ClickableViewAccessibility")
-    @RequiresApi(api = Build.VERSION_CODES.M)
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-        setContentView(R.layout.activity_touch_pad);
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             ViewGroup container, Bundle savedInstanceState) {
+        View v = inflater.inflate(R.layout.fragment_touchpad, container, false);
+        
 
-        _virtualTouchPad = findViewById(R.id.virtualTouchPad);
+        _virtualTouchPad = v.findViewById(R.id.virtualTouchPad);
 
-        _btnESC  = findViewById(R.id.btnESC);
-        _btnTab = findViewById(R.id.btnTab);
-        _btnCaps  = findViewById(R.id.btnCaps);
-        _btnShift = findViewById(R.id.btnShift);
-        _btnCtrl = findViewById(R.id.btnCtrl);
-        _btnKeyboard = findViewById(R.id.btnKeyboard);
-        _btnAlt = findViewById(R.id.btnAlt);
-        _btnEnter = findViewById(R.id.btnEnter);
-        _btnBackspace = findViewById(R.id.btnBackspace);
-        _btnNextTrack = findViewById(R.id.btnNextTrack);
+        _btnESC = v.findViewById(R.id.btnESC);
+        _btnTab = v.findViewById(R.id.btnTab);
+        _btnCaps = v.findViewById(R.id.btnCaps);
+        _btnShift = v.findViewById(R.id.btnShift);
+        _btnCtrl = v.findViewById(R.id.btnCtrl);
+        _btnKeyboard = v.findViewById(R.id.btnKeyboard);
+        _btnAlt = v.findViewById(R.id.btnAlt);
+        _btnEnter = v.findViewById(R.id.btnEnter);
+        _btnBackspace = v.findViewById(R.id.btnBackspace);
+        _btnNextTrack = v.findViewById(R.id.btnNextTrack);
 
         _udpClient.prepare(_host.localIP);
 
-        _tcpClient.addICloseConnectionListener(this::onBackPressed);
-
-        _virtualTouchPad.setOnTouchListener((v, event) -> {
+        _virtualTouchPad.setOnTouchListener((view, event) -> {
             int x = (int)event.getX();
             int y = (int)event.getY();
             int actionEvent = MotionEventCompat.getActionMasked(event);
@@ -86,11 +82,10 @@ public class TouchPadActivity extends AppCompatActivity {
 
             return true;
         });
-        EditText editText = findViewById(R.id.edt);
+        EditText editText = v.findViewById(R.id.edt);
         editText.setRawInputType(0x00000000);
 
-
-        editText.setOnKeyListener((v, keyCode, event) -> {
+        editText.setOnKeyListener((view, keyCode, event) -> {
             char c;
             switch (event.getKeyCode()){
                 case KEYCODE_DEL:
@@ -128,12 +123,12 @@ public class TouchPadActivity extends AppCompatActivity {
             return true;
         });
 
-        _btnKeyboard.setOnClickListener((v) ->  {
+
+        _btnKeyboard.setOnClickListener((view) ->  {
             editText.requestFocus();
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.toggleSoftInput(0, 0);
         });
-
 
 
         setClick(_btnNextTrack, 176);
@@ -145,8 +140,9 @@ public class TouchPadActivity extends AppCompatActivity {
         setClick(_btnAlt, 18);
         setClick(_btnEnter, 13);
         setClick(_btnBackspace, 8);
-    }
 
+        return v;
+    }
 
     @SuppressLint("ClickableViewAccessibility")
     public void setClick(Button btn, int code){

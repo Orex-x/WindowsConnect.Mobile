@@ -148,6 +148,19 @@
         app:layout_constraintStart_toEndOf="@+id/btnScreenStream"
         app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
 
+    <ImageButton
+        android:id="@+id/btnPlayer"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="8dp"
+        android:background="@null"
+        android:contentDescription="@null"
+        android:scaleType="centerCrop"
+        android:src="@drawable/player"
+        app:layout_constraintStart_toEndOf="@+id/btnTouchPad"
+        app:layout_constraintTop_toBottomOf="@+id/linearLayout" />
+
     <ProgressBar
         android:id="@+id/progressBarUploadFile"
         style="?android:attr/progressBarStyleHorizontal"

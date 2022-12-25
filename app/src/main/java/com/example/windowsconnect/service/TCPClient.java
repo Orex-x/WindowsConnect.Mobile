@@ -1,29 +1,19 @@
 package com.example.windowsconnect.service;
 
-import android.annotation.SuppressLint;
-import android.os.AsyncTask;
-
-import androidx.annotation.NonNull;
-
 import com.example.windowsconnect.interfaces.ITCPClient;
+import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
+import com.example.windowsconnect.interfaces.tcp.IRemoveHostFromList;
+import com.example.windowsconnect.interfaces.tcp.ISetProgressUploadFile;
+import com.example.windowsconnect.interfaces.tcp.ISetWallpaper;
 import com.example.windowsconnect.models.Command;
+import com.example.windowsconnect.supportListeners.SuperSupportListener;
 import com.example.windowsconnect.supportListeners.TcpClientListenerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.SocketAddress;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -33,10 +23,6 @@ public class TCPClient {
 
     private static TcpClientListenerSupport listeners = new TcpClientListenerSupport();
 
-    private Socket _clientSocket = null;
-    private OutputStream _outputStream = null;
-    private InputStream _inputStream = null;
-    private Thread _threadReceived;
 
     public void addListener(ITCPClient listener) {
         listeners.addListener(listener);
@@ -45,6 +31,29 @@ public class TCPClient {
     public void removeListener(ITCPClient listener) {
         listeners.removeListener(listener);
     }
+
+    private static final SuperSupportListener superSupportListener = SuperSupportListener.getListenerInfo();
+
+    public void addSetWallpaperListener(ISetWallpaper l){
+        superSupportListener.iSetWallpapers.add(l);
+    }
+
+    public void addICloseConnectionListener(ICloseConnection l){
+        superSupportListener.iCloseConnections.add(l);
+    }
+
+    public void addIRemoveHostFromListsListener(IRemoveHostFromList l){
+        superSupportListener.iRemoveHostFromLists.add(l);
+    }
+
+    public void addISetProgressUploadFileListener(ISetProgressUploadFile l){
+        superSupportListener.iSetProgressUploadFiles.add(l);
+    }
+
+    private Socket _clientSocket = null;
+    private OutputStream _outputStream = null;
+    private InputStream _inputStream = null;
+    private Thread _threadReceived;
 
 
     public TCPClient(String ip) {
@@ -174,6 +183,7 @@ public class TCPClient {
                     if (bytesReceived == -1)
                     {
                         listeners.closeConnection();
+                        superSupportListener.closeConnection();
                         break;
                     }
 
@@ -207,10 +217,14 @@ public class TCPClient {
                             case Command.setWallpaper:
                                 String dataString = map.get("value").toString();
                                 listeners.setWallPaper(dataString);
+                                superSupportListener.setWallpaper(dataString);
                                 break;
                             case Command.closeConnection:
                                 listeners.removeHostFromList();
                                 listeners.closeConnection();
+
+                                superSupportListener.removeHostFromList();
+                                superSupportListener.closeConnection();
                                 break;
                             case Command.setTextClipBoard:
                                 String text = map.get("value").toString();
@@ -223,6 +237,7 @@ public class TCPClient {
                     }
                 }catch (SocketException e) {
                     listeners.closeConnection();
+                    superSupportListener.closeConnection();
                     e.printStackTrace();
                     break;
                 }

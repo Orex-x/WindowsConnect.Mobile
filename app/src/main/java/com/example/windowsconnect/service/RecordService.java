@@ -1,8 +1,8 @@
 package com.example.windowsconnect.service;
 
 
-import static com.example.windowsconnect.MainActivity._host;
-import static com.example.windowsconnect.MainActivity._udpClient;
+import static com.example.windowsconnect.core.Boot._host;
+import static com.example.windowsconnect.core.Boot._udpClient;
 
 import android.app.Service;
 import android.content.Intent;

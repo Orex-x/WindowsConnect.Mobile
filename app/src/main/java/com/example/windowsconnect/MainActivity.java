@@ -1,5 +1,9 @@
 package com.example.windowsconnect;
 
+import static com.example.windowsconnect.core.Boot._host;
+import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot._tcpClient;
+
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -47,9 +51,11 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.windowsconnect.core.Boot;
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.IUDPClient;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
+import com.example.windowsconnect.interfaces.udp.IOpenConnection;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
@@ -72,7 +78,7 @@ import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 
-public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener, ITCPClient, IUDPClient {
+public class MainActivity extends AppCompatActivity implements ListDeviceFragmentListener {
 
     private Button _btnDisconnect;
     private ImageButton _btnTouchPad;
@@ -80,19 +86,14 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     private ImageButton _btnWakeUp;
     private ImageButton _btnPrint;
     private ImageButton _btnScreenStream;
+    private ImageButton _btnPlayer;
     private ImageView _imageView;
 
-    public static UDPClient _udpClient;
-    public static TCPClient _tcpClient;
     private SeekBar _seekBarVolume;
     private TextView _txtVolume;
     private TextView _txtHostName;
-
-    public static Host _host;
+    private Boot _boot;
     Database databaseHelper;
-
-
-    private Handler handler, handlerProgressBar, handlerConnectionClose;
 
     private static final int REQUEST_TAKE_DOCUMENT = 2;
 
@@ -115,8 +116,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
     // надо нажать на название хоста 3 раза
     private int countClick = 0;
 
-
-
     private boolean screenOn = false;
 
     ActivityResultLauncher<Intent> startMediaProjection;
@@ -136,6 +135,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         projectionManager = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
         setContentView(R.layout.activity_main);
 
+        _boot = Boot.getBoot(this);
         databaseHelper = new Database(this);
 
         _btnDisconnect = findViewById(R.id.btnDisconnectConnect);
@@ -148,44 +148,14 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
+        _btnPlayer = findViewById(R.id.btnPlayer);
 
         _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
 
         frame = findViewById(R.id.frame);
 
-        handler = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                _imageView.setImageBitmap((Bitmap) msg.obj);
-            }
-        };
-
-        handlerProgressBar = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                _progressBarUploadFile.setProgress((int) msg.obj);
-            }
-        };
-
-        handlerConnectionClose = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                _imageView.setImageResource(R.drawable.wallpaper);
-                _txtHostName.setText("Host:");
-                _btnDisconnect.setText("connect");
-                setViewListeners(false);
-                _host = null;
-            }
-        };
-
-        _udpClient = new UDPClient();
-        _udpClient.addListener(this);
-
-        requestOpenConnection();
-
-
         if (listDeviceFragment == null) {
-            listDeviceFragment = new ListDeviceFragment(this, _udpClient);
+            listDeviceFragment = new ListDeviceFragment(this);
         }
 
         if(!_udpClient.isConnected()){
@@ -203,6 +173,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         });
 
         _btnScreenStream.setEnabled(false);
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
             startMediaProjection = registerForActivityResult(
                     new ActivityResultContracts.StartActivityForResult(),
@@ -260,8 +231,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
             );
         }
 
-
-
         _btnScreenStream.setOnClickListener(v ->{
             if (screenOn) {
                 screenOn = false;
@@ -296,7 +265,26 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         Intent intent = new Intent(this, RecordService.class);
         bindService(intent, connection, BIND_AUTO_CREATE);
 
+
+        _boot.addConnectionOpenListener(this::connectionOpen);
+
     }
+
+    public void connectionOpen(Host host){
+        _tcpClient.addICloseConnectionListener(this::closeConnection);
+        _tcpClient.addSetWallpaperListener(this::setWallPaper);
+        _tcpClient.addIRemoveHostFromListsListener(this::removeHostFromList);
+        _tcpClient.addISetProgressUploadFileListener(this::setProgressUploadFile);
+        runOnUiThread(() -> {
+            setViewListeners(true);
+            startService(new Intent(MainActivity.this, ClipboardService.class));
+            frame.setVisibility(View.GONE);
+            _btnDisconnect.setText("Disconnect");
+            _txtHostName.setText("Host: " + host.getName());
+        });
+    }
+
+
 
     public void setPermissions(){
 
@@ -343,26 +331,6 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
         }
     }
 
-    public void requestOpenConnection(){
-        ArrayList<Host> hosts = databaseHelper.getAllHosts();
-        if(hosts.size() > 0){
-            new Thread(){
-                @Override
-                public void run() {
-                    while (!_udpClient.isConnected()){
-                        AutoFinderHost.RequestOpenConnection(Settings.getDevice(), hosts);
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            }.start();
-        }
-    }
-
-
     public void setViewListeners(boolean isActive){
         if(isActive){
             _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
@@ -402,8 +370,14 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 Intent intent = new Intent(this, TouchPadActivity.class);
                 startActivity(intent);
             });
+
+            _btnPlayer.setOnClickListener(v -> {
+                Intent intent = new Intent(this, PlayerActivity.class);
+                startActivity(intent);
+            });
         }else{
             _btnPrint.setOnClickListener(null);
+            _btnPlayer.setOnClickListener(null);
             _btnTouchPad.setOnClickListener(null);
             _seekBarVolume.setOnSeekBarChangeListener(null);
         }
@@ -455,90 +429,41 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                 }
             });
         }
-
-       /* String json = CommandHelper.toJson(Settings.getDevice());
-        _udpClient.sendMessage(json, Command.requestConnectDevice, host.localIP);
-        databaseHelper.insertHost(host);*/
     }
 
 
-    @Override
-    public void openConnection(Host host) {
-        try{
-            _host = host;
-            _tcpClient = new TCPClient(host.localIP);
-            _tcpClient.addListener(this);
-            _udpClient.setConnected(true);
-            setViewListeners(true);
-            _udpClient.sendMessage("200", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
-            Message message = new Message();
-            message.obj = host.getName();
-            runOnUiThread(() -> {
-                startService(new Intent(this, ClipboardService.class));
-                frame.setVisibility(View.GONE);
-                _btnDisconnect.setText("Disconnect");
-                _txtHostName.setText("Host: " + host.getName());
-            });
-        }catch (Exception ex){
-            try{
-                _udpClient.sendMessage("500", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
-            }catch (Exception ex2){
 
-            }
-        }
-    }
-
-
-    @Override
     public void closeConnection() {
-        _host = null;
-        _udpClient.setConnected(false);
-        _tcpClient.dispose();
-        handlerConnectionClose.sendMessage(new Message());
-        requestOpenConnection();
         runOnUiThread(() -> {
+            _imageView.setImageResource(R.drawable.wallpaper);
+            _txtHostName.setText("Host:");
+            _btnDisconnect.setText("connect");
+            setViewListeners(false);
             stopService(new Intent(this, ClipboardService.class));
         });
     }
 
-    @Override
+    public void setWallPaper(String data) {
+        byte[] x = Base64.decode(data, Base64.DEFAULT);
+        Bitmap bmp = BitmapFactory.decodeByteArray(x,0,x.length);
+        runOnUiThread(() -> _imageView.setImageBitmap(bmp));
+    }
+
+
     public void removeHostFromList() {
         databaseHelper.deleteHost(_host.name);
     }
 
-    @Override
-    public void setTextClipBoard(String text) {
 
-    }
-
-
-    @Override
-    public void addHost(Host host) {
-        //реализуется во фрагменте ListDevice (передаю потом нормально)
-    }
 
     @Override
     public void scanQR() {
         scanCode();
     }
 
-    @Override
     public void setProgressUploadFile(int progress) {
-        Message message = new Message();
-        message.obj = progress;
-        handlerProgressBar.sendMessage(message);
+        runOnUiThread(() -> _progressBarUploadFile.setProgress(progress));
     }
-
-    @Override
-    public void setWallPaper(String data) {
-        byte[] x = Base64.decode(data, Base64.DEFAULT);  //convert from base64 to byte array
-        Bitmap bmp = BitmapFactory.decodeByteArray(x,0,x.length);
-        Message message = new Message();
-        message.obj = bmp;
-        handler.sendMessage(message);
-    }
-
-
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -554,6 +479,7 @@ public class MainActivity extends AppCompatActivity implements ListDeviceFragmen
                             long fileLength = getFileLength(uri);
                             MyFile myFile = new MyFile(getFileName(uri), fileLength);
                             String json = CommandHelper.toJson(myFile);
+
                             _tcpClient.sendMessage(json, Command.saveFile);
                             _tcpClient.sendMessage(iStream, fileLength);
                         }

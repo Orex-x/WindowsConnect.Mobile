@@ -5,8 +5,11 @@ import android.os.Build;
 
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.IUDPClient;
+import com.example.windowsconnect.interfaces.udp.IAddHost;
+import com.example.windowsconnect.interfaces.udp.IOpenConnection;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.models.Host;
+import com.example.windowsconnect.supportListeners.SuperSupportListener;
 import com.example.windowsconnect.supportListeners.UdpClientListenerSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -21,16 +24,16 @@ import java.util.concurrent.CompletableFuture;
 
 public class UDPClient {
 
-    private static UdpClientListenerSupport listeners = new UdpClientListenerSupport();
 
-    public void addListener(IUDPClient listener) {
-        listeners.addListener(listener);
+    private static final SuperSupportListener superSupportListener = SuperSupportListener.getListenerInfo();
+
+    public void addOpenConnectionListener(IOpenConnection l){
+        superSupportListener.iOpenConnections.add(l);
     }
 
-    public void removeListener(IUDPClient listener) {
-        listeners.removeListener(listener);
+    public void addAddHostListener(IAddHost l){
+        superSupportListener.iAddHosts.add(l);
     }
-
 
     private boolean connected;
     public boolean isConnected() {
@@ -85,14 +88,14 @@ public class UDPClient {
                                 host.localIP =  mapHost.get("localIP").toString();
                                 host.name =  mapHost.get("name").toString();
                                 host.macAddress =  mapHost.get("macAddress").toString();
-                                listeners.addHost(host);
+                                superSupportListener.addHost(host);
                                 break;
                             case Command.openConnection:
                                 host.port = Integer.parseInt(mapHost.get("port").toString());
                                 host.localIP =  mapHost.get("localIP").toString();
                                 host.name =  mapHost.get("name").toString();
                                 host.macAddress =  mapHost.get("macAddress").toString();
-                                listeners.openConnection(host);
+                                superSupportListener.openConnection(host);
                                 break;
                         }
                         socket.close();
@@ -196,7 +199,9 @@ public class UDPClient {
         new SendMessageThread(message, command, ip, port).start();
     }
 
-
+    public synchronized void sendMessage(int command, String ip, int port){
+        new SendMessageThread(command, ip, port).start();
+    }
 
     public void prepare(String ip){
         new SendMessagePrepareThread(ip).start();
@@ -207,7 +212,11 @@ public class UDPClient {
     }
 
     public void sendMessageWithoutClose(byte[] message, int command){
-        new SendMessageWithoutCloseThread(message, command).start();
+        new SendMessageWithoutCloseThreadWithCommand(message, command).start();
+    }
+
+    public void sendMessageWithoutClose(String message, int command){
+        new SendMessageWithoutCloseThreadWithCommand(message.getBytes(StandardCharsets.UTF_8), command).start();
     }
 
     public void sendMessageWithoutClose(byte[] message){
@@ -238,12 +247,6 @@ public class UDPClient {
 
     class SendMessageWithoutCloseThread extends Thread{
         byte[] message;
-        int command;
-        public SendMessageWithoutCloseThread(byte[] message, int command){
-            this.message = message;
-            this.command = command;
-        }
-
         public SendMessageWithoutCloseThread(byte[] message){
             this.message = message;
         }
@@ -251,6 +254,29 @@ public class UDPClient {
         public void run() {
             try {
                 DatagramPacket packet = new DatagramPacket(message, message.length, _addressWithoutClose, Settings.UDP_SEND_PORT);
+                _socketWithoutClose.send(packet);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    class SendMessageWithoutCloseThreadWithCommand extends Thread{
+        byte[] message;
+        int command;
+
+        public SendMessageWithoutCloseThreadWithCommand(byte[] message, int command){
+            this.message = message;
+            this.command = command;
+        }
+
+        @Override
+        public void run() {
+            try {
+                byte[] commandBuffer = ByteBuffer.allocate(4).putInt(command).array();
+                reverse(commandBuffer);
+                byte[] msg = UDPClient.join(commandBuffer, message);
+                DatagramPacket packet = new DatagramPacket(msg, msg.length, _addressWithoutClose, Settings.UDP_SEND_PORT);
                 _socketWithoutClose.send(packet);
             } catch (Exception e) {
                 e.printStackTrace();
@@ -274,6 +300,7 @@ public class UDPClient {
 
     class SendMessageThread extends Thread{
         String message;
+        byte[] packet;
         String ip;
         int command;
         int port;
@@ -291,17 +318,33 @@ public class UDPClient {
             this.ip = ip;
             this.port = port;
         }
+
+        public SendMessageThread(int command, String ip, int port){
+            this.command = command;
+            this.ip = ip;
+            this.port = port;
+        }
+
         @Override
         public void run() {
             try {
-                byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
-                reverse(command_buffer);
-                byte[] msg = UDPClient.join(command_buffer, message.getBytes(StandardCharsets.UTF_8));
+                byte[] commandBuffer = ByteBuffer.allocate(4).putInt(command).array();
+                reverse(commandBuffer);
+
                 if(port == -1)
                     port = Settings.UDP_SEND_PORT;
+
                 DatagramSocket socket = new DatagramSocket(port);
                 InetAddress address = InetAddress.getByName(ip);
-                DatagramPacket packet = new DatagramPacket(msg, msg.length, address, port);
+                DatagramPacket packet;
+
+                if(message != null){
+                    byte[] msg = UDPClient.join(commandBuffer, message.getBytes(StandardCharsets.UTF_8));
+                    packet = new DatagramPacket(msg, msg.length, address, port);
+                }else{
+                    packet = new DatagramPacket(commandBuffer, commandBuffer.length, address, port);
+                }
+
                 socket.send(packet);
                 socket.close();
             } catch (Exception e) {

@@ -1,5 +1,7 @@
 package com.example.windowsconnect;
 
+import static com.example.windowsconnect.core.Boot._udpClient;
+
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
@@ -10,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 
@@ -17,6 +20,7 @@ import com.example.windowsconnect.adapters.HostAdapter;
 import com.example.windowsconnect.interfaces.HostAdapterListener;
 import com.example.windowsconnect.interfaces.ListDeviceFragmentListener;
 import com.example.windowsconnect.interfaces.IUDPClient;
+import com.example.windowsconnect.interfaces.udp.IAddHost;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.service.AutoFinderHost;
 import com.example.windowsconnect.service.Settings;
@@ -25,21 +29,19 @@ import com.example.windowsconnect.service.UDPClient;
 import java.util.ArrayList;
 
 
-public class ListDeviceFragment extends Fragment implements HostAdapterListener, IUDPClient {
+public class ListDeviceFragment extends Fragment implements HostAdapterListener{
 
     ArrayList<Host> hosts = new ArrayList<>();
     ListView listView;
-    Button btnScanQR;
+    Button btnScanQR, btnConnect;
     HostAdapter adapter;
+    EditText edtIP;
     private ListDeviceFragmentListener _listener;
 
-    public Handler handler;
     private ProgressBar progress;
-    private UDPClient _udpClient;
 
-    public ListDeviceFragment(ListDeviceFragmentListener listener, UDPClient udpClient){
+    public ListDeviceFragment(ListDeviceFragmentListener listener){
         _listener = listener;
-        _udpClient = udpClient;
     }
 
     @Override
@@ -63,21 +65,34 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
 
         listView = v.findViewById(R.id.recyclerView);
         btnScanQR = v.findViewById(R.id.btnScanQR);
+        btnConnect = v.findViewById(R.id.btnConnect);
         progress = v.findViewById(R.id.progress);
+        edtIP = v.findViewById(R.id.edtIP);
         adapter = new HostAdapter(getContext(), R.layout.host_item ,hosts, this);
         listView.setAdapter(adapter);
 
-        _udpClient.addListener(this);
+        _udpClient.addAddHostListener(host -> {
+            for (Host h : hosts) {
+                if(h.localIP.equals(host.localIP)) return;
+            }
+
+            hosts.add(host);
+
+            getActivity().runOnUiThread(() -> {
+                progress.setVisibility(View.GONE);
+                adapter.notifyDataSetChanged();
+            });
+        });
 
         btnScanQR.setOnClickListener(view -> _listener.scanQR());
 
-        handler = new Handler() {
-            @Override
-            public void handleMessage(Message msg) {
-                progress.setVisibility(View.GONE);
-                adapter.notifyDataSetChanged();
+        btnConnect.setOnClickListener(view -> {
+            String ip = edtIP.getText().toString();
+            if(ip.length() > 0){
+                _listener.requestConnectHost(new Host(5000, ip, "some think host", ""));
             }
-        };
+        });
+
 
         return v;
     }
@@ -86,20 +101,5 @@ public class ListDeviceFragment extends Fragment implements HostAdapterListener,
     public void click(int position) {
         Host host = hosts.get(position);
         _listener.requestConnectHost(host);
-    }
-
-    @Override
-    public void addHost(Host host) {
-        for (Host h : hosts) {
-            if(h.localIP.equals(host.localIP)) return;
-        }
-
-        hosts.add(host);
-        handler.sendMessage(new Message());
-    }
-
-    @Override
-    public void openConnection(Host host) {
-        //реазируется в mainActivity (потом исправлю)
     }
 }

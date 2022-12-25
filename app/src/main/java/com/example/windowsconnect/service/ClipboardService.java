@@ -1,7 +1,8 @@
 package com.example.windowsconnect.service;
 
 
-import static com.example.windowsconnect.MainActivity._tcpClient;
+//import static com.example.windowsconnect.MainActivity._tcpClient;
+import static com.example.windowsconnect.core.Boot._tcpClient;
 
 import android.app.Service;
 import android.content.ClipData;
