@@ -448,11 +448,8 @@ public class MainActivity extends AppCompatActivity{
                         InputStream iStream = getContentResolver().openInputStream(uri);
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                             long fileLength = getFileLength(uri);
-                            MyFile myFile = new MyFile(getFileName(uri), fileLength);
-                            String json = CommandHelper.toJson(myFile);
-
-                            tcpClient.sendMessage(json, Command.saveFile);
-                            tcpClient.sendMessage(iStream, fileLength);
+                            tcpClient.sendMessage(getFileName(uri), Command.saveFile, true);
+                            tcpClient.sendMessage(iStream, fileLength, false);
                         }
                     } catch (FileNotFoundException e) {
                         e.printStackTrace();

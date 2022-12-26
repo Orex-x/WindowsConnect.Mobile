@@ -102,18 +102,45 @@ public class TCPClient {
 
 
 
-    public void sendMessage(byte[] data, int command) {
-        new TCPSendMessageThread(data, command).start();
+    public void sendMessage(byte[] data, int command, boolean join) {
+        Thread t = new TCPSendMessageThread(data, command);
+        t.start();
+        if(join) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
-    public void sendMessage(String message, int command) {
+    public void sendMessage(String message, int command, boolean join) {
         byte[] data = message.getBytes(StandardCharsets.UTF_8);
-        new TCPSendMessageThread(data, command).start();
+        Thread t = new TCPSendMessageThread(data, command);
+        t.start();
+        if(join) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
-    public void sendMessage(InputStream stream, long l) {
-        new TCPSendMessageThreadStream(stream, l).start();
+    public void sendMessage(InputStream stream, long l, boolean join) {
+        Thread t =  new TCPSendMessageThreadStream(stream, l);
+        t.start();
+        if(join) {
+            try {
+                t.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
+
+
 
     private class TCPSendMessageThread extends Thread {
         byte[] data;
@@ -129,8 +156,8 @@ public class TCPClient {
             byte[] packet_length = ByteBuffer.allocate(4).putInt(data.length).array();
             byte[] command_buffer = ByteBuffer.allocate(4).putInt(command).array();
             try {
-                _outputStream.write(packet_length, 0, packet_length.length);
                 _outputStream.write(command_buffer, 0, command_buffer.length);
+                _outputStream.write(packet_length, 0, packet_length.length);
                 _outputStream.write(data, 0, data.length);
             } catch (IOException e) {
                 e.printStackTrace();
