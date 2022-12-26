@@ -1,7 +1,7 @@
 package com.example.windowsconnect.service;
 
 //import static com.example.windowsconnect.MainActivity._udpClient;
-import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot.udpClient;
 import static com.example.windowsconnect.service.UDPClient.reverse;
 
 import com.example.windowsconnect.models.Command;
@@ -25,8 +25,8 @@ public class AutoFinderHost {
     public static void RequestOpenConnection(Device device, ArrayList<Host> hosts){
         String message = CommandHelper.toJson(device);
         for (Host host : hosts) {
-            _udpClient.sendMessage(23, host.localIP, 5010);
-            _udpClient.sendMessage(message, Command.requestConnectDevice, host.localIP);
+            udpClient.sendMessage(23, host.localIP, 5010);
+            udpClient.sendMessage(message, Command.requestConnectDevice, host.localIP);
         }
     }
 }

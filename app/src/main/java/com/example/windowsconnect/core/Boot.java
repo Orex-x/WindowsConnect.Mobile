@@ -1,17 +1,13 @@
 package com.example.windowsconnect.core;
 
 import android.content.Context;
-import android.content.Intent;
-import android.os.Message;
-import android.view.View;
+import android.os.Build;
 
-import com.example.windowsconnect.interfaces.ITCPClient;
-import com.example.windowsconnect.interfaces.IUDPClient;
-import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
 import com.example.windowsconnect.interfaces.udp.IOpenConnection;
+import com.example.windowsconnect.models.Command;
+import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
 import com.example.windowsconnect.service.AutoFinderHost;
-import com.example.windowsconnect.service.ClipboardService;
 import com.example.windowsconnect.service.Database;
 import com.example.windowsconnect.service.Settings;
 import com.example.windowsconnect.service.TCPClient;
@@ -19,18 +15,20 @@ import com.example.windowsconnect.service.UDPClient;
 import com.example.windowsconnect.supportListeners.SuperSupportListener;
 
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Boot {
 
     private static final SuperSupportListener superSupportListener = SuperSupportListener.getListenerInfo();
 
     private final Context _context;
-    private final Database databaseHelper;
 
 
-    public static UDPClient _udpClient;
-    public static TCPClient _tcpClient;
-    public static Host _host;
+    public static Database databaseHelper;
+    public static UDPClient udpClient;
+    public static TCPClient tcpClient;
+    public static Host host;
 
     private static Boot _boot;
 
@@ -49,26 +47,21 @@ public class Boot {
         _context = context;
         databaseHelper = new Database(context);
 
-        _udpClient = new UDPClient();
+        udpClient = new UDPClient();
 
-        _udpClient.addOpenConnectionListener(host -> {
+        udpClient.addOpenConnectionListener(host -> {
             try{
-                _host = host;
-                _tcpClient = new TCPClient(host.localIP);
+                Boot.host = host;
+                tcpClient = new TCPClient(host.localIP);
 
-                _tcpClient.addICloseConnectionListener(() -> {
-                    _host = null;
-                    _udpClient.setConnected(false);
-                    _tcpClient.dispose();
-                    requestOpenConnection();
-                });
+                tcpClient.addICloseConnectionListener(this::closeConnection);
 
-                _udpClient.setConnected(true);
-                _udpClient.sendMessage("200", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
+                udpClient.setConnected(true);
+                udpClient.sendMessage("200", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
                 superSupportListener.connectionOpen(host);
             }catch (Exception ex){
                 try{
-                    _udpClient.sendMessage("500", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
+                    udpClient.sendMessage("500", -1 , host.localIP, Settings.UDP_SEND_WITH_RECEIVE_PORT);
                 }catch (Exception ex2){
 
                 }
@@ -78,13 +71,20 @@ public class Boot {
         requestOpenConnection();
     }
 
+    public void closeConnection(){
+        Boot.host = null;
+        udpClient.setConnected(false);
+        tcpClient.dispose();
+        requestOpenConnection();
+    }
+
     public void requestOpenConnection(){
         ArrayList<Host> hosts = databaseHelper.getAllHosts();
         if(hosts.size() > 0){
             new Thread(){
                 @Override
                 public void run() {
-                    while (!_udpClient.isConnected()){
+                    while (!udpClient.isConnected()){
                         AutoFinderHost.RequestOpenConnection(Settings.getDevice(), hosts);
                         try {
                             Thread.sleep(5000);
@@ -94,6 +94,17 @@ public class Boot {
                     }
                 }
             }.start();
+        }
+    }
+
+    public boolean requestConnectHost(Host host) {
+        String json = CommandHelper.toJson(Settings.getDevice());
+        int answer = Integer.parseInt(udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
+        if(answer == 200){
+            databaseHelper.insertHost(host);
+            return true;
+        }else{
+            return false;
         }
     }
 

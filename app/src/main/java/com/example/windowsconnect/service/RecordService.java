@@ -1,8 +1,8 @@
 package com.example.windowsconnect.service;
 
 
-import static com.example.windowsconnect.core.Boot._host;
-import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot.host;
+import static com.example.windowsconnect.core.Boot.udpClient;
 
 import android.app.Service;
 import android.content.Intent;
@@ -15,9 +15,6 @@ import android.os.HandlerThread;
 import android.os.IBinder;
 import android.os.ParcelFileDescriptor;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
 
 
 public class RecordService extends Service {
@@ -94,7 +91,7 @@ public class RecordService extends Service {
         if (!running) {
             return false;
         }
-        _udpClient.close();
+        udpClient.close();
         running = false;
         mediaRecorder.stop();
         mediaRecorder.reset();
@@ -126,17 +123,17 @@ public class RecordService extends Service {
             new Thread(() -> {
 
                 byte[] packet = new byte[5 * 1024 * 1024];
-                _udpClient.prepare(_host.localIP);
+                udpClient.prepare(host.localIP);
                 while (true){
                     try {
                         int byteCount = inputStream.read(packet);
                         if(byteCount == -1) break;
-                        _udpClient.sendMessageWithoutClose(packet);
+                        udpClient.sendMessageWithoutClose(packet);
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
                 }
-                _udpClient.close();
+                udpClient.close();
 
             }).start();
 

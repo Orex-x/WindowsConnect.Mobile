@@ -7,7 +7,6 @@ import static android.view.KeyEvent.KEYCODE_UNKNOWN;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -25,9 +24,8 @@ import androidx.fragment.app.Fragment;
 import com.example.windowsconnect.R;
 import com.example.windowsconnect.models.Command;
 
-import static com.example.windowsconnect.core.Boot._host;
-import static com.example.windowsconnect.core.Boot._tcpClient;
-import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot.host;
+import static com.example.windowsconnect.core.Boot.udpClient;
 
 import java.nio.ByteBuffer;
 
@@ -40,7 +38,7 @@ public class TouchpadFragment extends Fragment{
     @Override
     public void onDestroy() {
        // _tcpClient.removeListener(this);
-        _udpClient.close();
+        udpClient.close();
         super.onDestroy();
     }
 
@@ -62,7 +60,7 @@ public class TouchpadFragment extends Fragment{
         _btnBackspace = v.findViewById(R.id.btnBackspace);
         _btnNextTrack = v.findViewById(R.id.btnNextTrack);
 
-        _udpClient.prepare(_host.localIP);
+        udpClient.prepare(host.localIP);
 
         _virtualTouchPad.setOnTouchListener((view, event) -> {
             int x = (int)event.getX();
@@ -78,7 +76,7 @@ public class TouchpadFragment extends Fragment{
             byteBuffer.putInt(Command.virtualTouchPadChanged);
 
             byte[] packet = byteBuffer.array();
-            _udpClient.sendMessageWithoutClose(packet);
+            udpClient.sendMessageWithoutClose(packet);
 
             return true;
         });
@@ -164,7 +162,7 @@ public class TouchpadFragment extends Fragment{
         byteBuffer.putInt(code);
         byteBuffer.putInt(command);
         byte[] packet = byteBuffer.array();
-        _udpClient.sendMessageWithoutClose(packet);
+        udpClient.sendMessageWithoutClose(packet);
     }
 
     public void keyboardPress(char code){
@@ -172,6 +170,6 @@ public class TouchpadFragment extends Fragment{
         byteBuffer.putChar(code);
         byteBuffer.putInt(Command.keyboardPress);
         byte[] packet = byteBuffer.array();
-        _udpClient.sendMessageWithoutClose(packet);
+        udpClient.sendMessageWithoutClose(packet);
     }
 }

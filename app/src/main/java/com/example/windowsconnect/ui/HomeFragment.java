@@ -1,12 +1,8 @@
 package com.example.windowsconnect.ui;
 
-import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.os.Message;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.util.Base64;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -15,14 +11,13 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.windowsconnect.R;
 import com.example.windowsconnect.core.Boot;
 
 
-import static com.example.windowsconnect.core.Boot._tcpClient;
+import static com.example.windowsconnect.core.Boot.tcpClient;
 
 
 
@@ -75,7 +70,7 @@ public class HomeFragment extends Fragment {
     }
 
     public void initListeners(){
-        _tcpClient.addSetWallpaperListener(data -> {
+        tcpClient.addSetWallpaperListener(data -> {
             byte[] x = Base64.decode(data, Base64.DEFAULT);
             _wallPaper = x;
             setWallPaper(x);

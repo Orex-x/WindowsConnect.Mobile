@@ -44,7 +44,7 @@ public class SuperSupportListener implements
     }
 
     @Override
-    public void setWallpaper(String data) {
+    public void setWallpaper(byte[] data) {
         for (ISetWallpaper item : iSetWallpapers) item.setWallpaper(data);
     }
 

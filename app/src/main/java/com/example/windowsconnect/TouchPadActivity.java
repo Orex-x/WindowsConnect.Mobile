@@ -1,13 +1,11 @@
 package com.example.windowsconnect;
 
-import static android.view.KeyEvent.ACTION_UP;
-import static android.view.KeyEvent.KEYCODE_ALT_LEFT;
 import static android.view.KeyEvent.KEYCODE_DEL;
 import static android.view.KeyEvent.KEYCODE_ENTER;
 import static android.view.KeyEvent.KEYCODE_UNKNOWN;
-import static com.example.windowsconnect.core.Boot._host;
-import static com.example.windowsconnect.core.Boot._tcpClient;
-import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot.host;
+import static com.example.windowsconnect.core.Boot.tcpClient;
+import static com.example.windowsconnect.core.Boot.udpClient;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -25,7 +23,6 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 
-import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
 import com.example.windowsconnect.models.Command;
 
 import java.nio.ByteBuffer;
@@ -39,8 +36,13 @@ public class TouchPadActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        _udpClient.close();
+        udpClient.close();
         super.onDestroy();
+    }
+
+    @Override
+    public void onBackPressed() {
+        super.onBackPressed();
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -64,9 +66,9 @@ public class TouchPadActivity extends AppCompatActivity {
         _btnBackspace = findViewById(R.id.btnBackspace);
         _btnNextTrack = findViewById(R.id.btnNextTrack);
 
-        _udpClient.prepare(_host.localIP);
+        udpClient.prepare(host.localIP);
 
-        _tcpClient.addICloseConnectionListener(this::onBackPressed);
+        tcpClient.addICloseConnectionListener(this::onBackPressed);
 
         _virtualTouchPad.setOnTouchListener((v, event) -> {
             int x = (int)event.getX();
@@ -82,7 +84,7 @@ public class TouchPadActivity extends AppCompatActivity {
             byteBuffer.putInt(Command.virtualTouchPadChanged);
 
             byte[] packet = byteBuffer.array();
-            _udpClient.sendMessageWithoutClose(packet);
+            udpClient.sendMessageWithoutClose(packet);
 
             return true;
         });
@@ -147,7 +149,6 @@ public class TouchPadActivity extends AppCompatActivity {
         setClick(_btnBackspace, 8);
     }
 
-
     @SuppressLint("ClickableViewAccessibility")
     public void setClick(Button btn, int code){
         btn.setOnTouchListener((view, event) -> {
@@ -168,7 +169,7 @@ public class TouchPadActivity extends AppCompatActivity {
         byteBuffer.putInt(code);
         byteBuffer.putInt(command);
         byte[] packet = byteBuffer.array();
-        _udpClient.sendMessageWithoutClose(packet);
+        udpClient.sendMessageWithoutClose(packet);
     }
 
     public void keyboardPress(char code){
@@ -176,6 +177,6 @@ public class TouchPadActivity extends AppCompatActivity {
         byteBuffer.putChar(code);
         byteBuffer.putInt(Command.keyboardPress);
         byte[] packet = byteBuffer.array();
-        _udpClient.sendMessageWithoutClose(packet);
+        udpClient.sendMessageWithoutClose(packet);
     }
 }

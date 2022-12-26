@@ -2,7 +2,7 @@ package com.example.windowsconnect.service;
 
 
 //import static com.example.windowsconnect.MainActivity._tcpClient;
-import static com.example.windowsconnect.core.Boot._tcpClient;
+import static com.example.windowsconnect.core.Boot.tcpClient;
 
 import android.app.Service;
 import android.content.ClipData;
@@ -27,7 +27,7 @@ public class ClipboardService extends Service implements ITCPClient {
         super.onCreate();
         Log.d(TAG, "onCreate");
 
-        _tcpClient.addListener(this);
+        tcpClient.addListener(this);
         myClipboard = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
         myClipboard.addPrimaryClipChangedListener(() -> {
             String text = myClipboard.getPrimaryClip().toString();

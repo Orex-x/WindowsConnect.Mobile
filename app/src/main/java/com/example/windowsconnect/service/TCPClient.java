@@ -1,5 +1,9 @@
 package com.example.windowsconnect.service;
 
+import android.os.Build;
+
+import androidx.annotation.RequiresApi;
+
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
 import com.example.windowsconnect.interfaces.tcp.IRemoveHostFromList;
@@ -173,68 +177,35 @@ public class TCPClient {
     }
 
     public class TCPReceivedThread extends Thread {
+        @RequiresApi(api = Build.VERSION_CODES.N)
         @Override
         public void run() {
-            byte[] headerBuffer = new byte[4];
+            int length;
+            byte[] data;
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    int bytesReceived = _inputStream.read(headerBuffer, 0, 4);
+                    int command = read4Bytes();
+                    if(command == -1) continue;
 
-                    if (bytesReceived == -1)
-                    {
-                        listeners.closeConnection();
-                        superSupportListener.closeConnection();
-                        break;
+                    switch (command) {
+                        case Command.setWallpaper:
+                            length = read4Bytes();
+                            if(length == -1) break;
+                            data = readBytes(length);
+                            superSupportListener.setWallpaper(data);
+                            break;
+                        case Command.closeConnection:
+                            superSupportListener.removeHostFromList();
+                            superSupportListener.closeConnection();
+                            break;
+                        case Command.setTextClipBoard:
+                            length = read4Bytes();
+                            if(length == -1) break;
+                            data = readBytes(length);
+                            listeners.setTextClipBoard(new String(data, StandardCharsets.UTF_8));
+                            break;
                     }
 
-                    if (bytesReceived != 4)
-                        continue;
-
-                    ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
-                    byteBuffer.put(headerBuffer);
-                    byteBuffer.rewind();
-                    int length = byteBuffer.getInt();
-
-                    byte[] buffer = new byte[length];
-
-                    int count = 0;
-                    do
-                    {
-                        bytesReceived = _inputStream.read(buffer, count, buffer.length - count);
-                        count += bytesReceived;
-                        if(count > length) break;
-                    }
-                    while (count != length);
-
-                    String json = new String(buffer, StandardCharsets.UTF_8);
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    try {
-                        Map<String, Object> map = mapper.readValue(json, Map.class); // иногда тут вываливается stack size 1043KB
-                        int command = Integer.parseInt(map.get("command").toString());
-
-                        switch (command) {
-                            case Command.setWallpaper:
-                                String dataString = map.get("value").toString();
-                                listeners.setWallPaper(dataString);
-                                superSupportListener.setWallpaper(dataString);
-                                break;
-                            case Command.closeConnection:
-                                listeners.removeHostFromList();
-                                listeners.closeConnection();
-
-                                superSupportListener.removeHostFromList();
-                                superSupportListener.closeConnection();
-                                break;
-                            case Command.setTextClipBoard:
-                                String text = map.get("value").toString();
-                                listeners.setTextClipBoard(text);
-                                break;
-                        }
-                    } catch (IOException e) {
-                        System.out.println("Пришло сообщение не json вида: " + json);
-                        e.printStackTrace();
-                    }
                 }catch (SocketException e) {
                     listeners.closeConnection();
                     superSupportListener.closeConnection();
@@ -245,6 +216,44 @@ public class TCPClient {
                     e.printStackTrace();
                 }
             }
+        }
+
+        private int read4Bytes() throws IOException {
+            byte[] buffer = new byte[4];
+            int bytesReceived = _inputStream.read(buffer, 0, 4);
+            if (bytesReceived == -1)
+            {
+                superSupportListener.closeConnection();
+                return -1;
+            }
+
+            if (bytesReceived != 4)
+                return -1;
+
+
+            ByteBuffer byteBuffer = ByteBuffer.allocate(Integer.BYTES);
+            byteBuffer.put(buffer);
+            byteBuffer.rewind();
+            return byteBuffer.getInt();
+        }
+
+        private byte[] readBytes(int length){
+            byte[] buffer = new byte[length];
+            int bytesReceived = 0;
+            int count = 0;
+            do
+            {
+                try {
+                    bytesReceived = _inputStream.read(buffer, count, buffer.length - count);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                count += bytesReceived;
+                if(count > length) break;
+            }
+            while (count != length);
+
+            return buffer;
         }
     }
 }

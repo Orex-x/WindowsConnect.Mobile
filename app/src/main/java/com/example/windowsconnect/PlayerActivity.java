@@ -1,8 +1,8 @@
 package com.example.windowsconnect;
 
-import static com.example.windowsconnect.core.Boot._host;
-import static com.example.windowsconnect.core.Boot._tcpClient;
-import static com.example.windowsconnect.core.Boot._udpClient;
+import static com.example.windowsconnect.core.Boot.host;
+import static com.example.windowsconnect.core.Boot.tcpClient;
+import static com.example.windowsconnect.core.Boot.udpClient;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.MotionEventCompat;
@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.SeekBar;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -39,7 +38,7 @@ public class PlayerActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        _udpClient.close();
+        udpClient.close();
         super.onDestroy();
     }
 
@@ -57,8 +56,8 @@ public class PlayerActivity extends AppCompatActivity {
         _btnNext = findViewById(R.id.btnNext);
         _switchControlVolume = findViewById(R.id.switchControlVolume);
 
-        _udpClient.prepare(_host.localIP);
-        _tcpClient.addICloseConnectionListener(this::onBackPressed);
+        udpClient.prepare(host.localIP);
+        tcpClient.addICloseConnectionListener(this::onBackPressed);
 
         _audioManager = (AudioManager) getSystemService(AUDIO_SERVICE);
 
@@ -76,7 +75,7 @@ public class PlayerActivity extends AppCompatActivity {
             byteBuffer.putInt(Command.virtualTouchPadChanged);
 
             byte[] packet = byteBuffer.array();
-            _udpClient.sendMessageWithoutClose(packet);
+            udpClient.sendMessageWithoutClose(packet);
 
             return true;
         });
@@ -86,7 +85,7 @@ public class PlayerActivity extends AppCompatActivity {
             public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
                 _txtVolume.setText("Volume: " + i);
                 String json = CommandHelper.toJson(i);
-                _udpClient.sendMessageWithoutClose(json, Command.changeVolume);
+                udpClient.sendMessageWithoutClose(json, Command.changeVolume);
             }
 
             @Override
@@ -124,9 +123,11 @@ public class PlayerActivity extends AppCompatActivity {
                     _volumeLevel -= 5;
                     if(_volumeLevel < 0) _volumeLevel = 0;
                     break;
+                default:
+                    return super.onKeyDown(keyCode, event);
             }
             String json = CommandHelper.toJson(_volumeLevel);
-            _udpClient.sendMessageWithoutClose(json, Command.changeVolume);
+            udpClient.sendMessageWithoutClose(json, Command.changeVolume);
             _seekBarVolume.setProgress(_volumeLevel);
             return true;
         }
@@ -153,6 +154,6 @@ public class PlayerActivity extends AppCompatActivity {
         byteBuffer.putInt(code);
         byteBuffer.putInt(command);
         byte[] packet = byteBuffer.array();
-        _udpClient.sendMessageWithoutClose(packet);
+        udpClient.sendMessageWithoutClose(packet);
     }
 }

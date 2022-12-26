@@ -39,7 +39,7 @@ public class Database extends SQLiteOpenHelper {
         onCreate(db);
     }
 
-    public boolean insertHost(Host host) {
+    public synchronized boolean insertHost(Host host) {
         try{
             SQLiteDatabase db = this.getWritableDatabase();
             ContentValues contentValues = new ContentValues();
@@ -54,7 +54,7 @@ public class Database extends SQLiteOpenHelper {
         return false;
     }
 
-        public ArrayList<Host> getAllHosts() {
+    public synchronized ArrayList<Host> getAllHosts() {
         SQLiteDatabase db = this.getReadableDatabase();
         Cursor cursor = db.query(TABLE_HOST,
                 null, null, null, null, null, null);
@@ -75,10 +75,10 @@ public class Database extends SQLiteOpenHelper {
         return users;
     }
 
-    public boolean deleteHost(String name){
+    public synchronized boolean deleteHost(String name){
         try{
             SQLiteDatabase db = this.getWritableDatabase();
-            db.execSQL("DELETE FROM " + TABLE_HOST + " WHERE " + COLUMN_NAME + " = '" + name + "';");
+            db.execSQL("DELETE FROM " + TABLE_HOST + " WHERE " + COLUMN_IP + " = '" + name + "';");
             return true;
         }catch (Exception e){
             e.printStackTrace();
