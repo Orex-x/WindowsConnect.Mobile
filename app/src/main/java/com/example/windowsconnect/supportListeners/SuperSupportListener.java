@@ -3,11 +3,11 @@ package com.example.windowsconnect.supportListeners;
 
 import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
 import com.example.windowsconnect.interfaces.tcp.IRemoveHostFromList;
-import com.example.windowsconnect.interfaces.tcp.ISetProgressUploadFile;
 import com.example.windowsconnect.interfaces.udp.IAddHost;
 import com.example.windowsconnect.interfaces.udp.IConnectionOpen;
 import com.example.windowsconnect.interfaces.udp.IOpenConnection;
 import com.example.windowsconnect.interfaces.tcp.ISetWallpaper;
+import com.example.windowsconnect.interfaces.udp.ISetProgress;
 import com.example.windowsconnect.models.Host;
 
 import java.util.ArrayList;
@@ -15,7 +15,7 @@ import java.util.List;
 
 public class SuperSupportListener implements
         IOpenConnection, IConnectionOpen, ISetWallpaper,
-        ICloseConnection, IRemoveHostFromList, ISetProgressUploadFile, IAddHost{
+        ICloseConnection, IRemoveHostFromList, IAddHost, ISetProgress{
     private static SuperSupportListener _listener;
 
     public static SuperSupportListener getListenerInfo() {
@@ -30,8 +30,8 @@ public class SuperSupportListener implements
     public List<ISetWallpaper> iSetWallpapers = new ArrayList<>();
     public List<ICloseConnection> iCloseConnections = new ArrayList<>();
     public List<IRemoveHostFromList> iRemoveHostFromLists = new ArrayList<>();
-    public List<ISetProgressUploadFile> iSetProgressUploadFiles = new ArrayList<>();
     public List<IAddHost> iAddHosts = new ArrayList<>();
+    public List<ISetProgress> iSetProgresses = new ArrayList<>();
 
     @Override
     public void openConnection(Host host) {
@@ -59,12 +59,12 @@ public class SuperSupportListener implements
     }
 
     @Override
-    public void setProgressUploadFile(int progress) {
-        for (ISetProgressUploadFile item : iSetProgressUploadFiles) item.setProgressUploadFile(progress);
+    public void addHost(Host host) {
+        for (IAddHost item : iAddHosts) item.addHost(host);
     }
 
     @Override
-    public void addHost(Host host) {
-        for (IAddHost item : iAddHosts) item.addHost(host);
+    public void set(int progress) {
+        for (ISetProgress item : iSetProgresses) item.set(progress);
     }
 }

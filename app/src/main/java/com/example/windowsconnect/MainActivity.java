@@ -10,6 +10,9 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.fragment.app.Fragment;
+import androidx.fragment.app.FragmentManager;
+import androidx.fragment.app.FragmentTransaction;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
@@ -37,25 +40,28 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.provider.OpenableColumns;
 import android.util.DisplayMetrics;
+import android.view.View;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.ProgressBar;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.example.windowsconnect.core.Boot;
+import com.example.windowsconnect.core.Sender;
+import com.example.windowsconnect.interfaces.ISendImageFragment;
 import com.example.windowsconnect.models.Command;
-import com.example.windowsconnect.models.CommandHelper;
 import com.example.windowsconnect.models.Host;
-import com.example.windowsconnect.models.MyFile;
 import com.example.windowsconnect.service.ClipboardService;
 import com.example.windowsconnect.service.RecordService;
+import com.example.windowsconnect.ui.SendImageFragment;
+
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
-public class MainActivity extends AppCompatActivity{
+public class MainActivity extends AppCompatActivity implements ISendImageFragment {
 
     private Button _btnDisconnect;
     private ImageButton _btnTouchPad;
@@ -65,11 +71,12 @@ public class MainActivity extends AppCompatActivity{
     private ImageButton _btnScreenStream;
     private ImageButton _btnPlayer;
     private ImageView _imageView;
+    private FrameLayout _frame;
 
-    private SeekBar _seekBarVolume;
-    private TextView _txtVolume;
+
     private TextView _txtHostName;
     private Boot _boot;
+    private Sender _sender;
 
     private static final int REQUEST_TAKE_DOCUMENT = 2;
 
@@ -96,9 +103,6 @@ public class MainActivity extends AppCompatActivity{
 
     ActivityResultLauncher<Intent> startMediaProjection;
 
-    FrameLayout frame;
-  //  private ListDeviceFragment listDeviceFragment;
-
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -112,6 +116,7 @@ public class MainActivity extends AppCompatActivity{
         setContentView(R.layout.activity_main);
 
         _boot = Boot.getBoot(this);
+        _sender = new Sender(this);
 
         _btnDisconnect = findViewById(R.id.btnDisconnectConnect);
         _btnSleep = findViewById(R.id.btnSleep);
@@ -119,19 +124,13 @@ public class MainActivity extends AppCompatActivity{
         _btnPrint = findViewById(R.id.btnPrint);
         _btnScreenStream = findViewById(R.id.btnScreenStream);
         _btnTouchPad = findViewById(R.id.btnTouchPad);
-        _seekBarVolume = findViewById(R.id.seekBarVolume);
-        _txtVolume = findViewById(R.id.txtVolume);
         _txtHostName = findViewById(R.id.txtHostName);
         _imageView = findViewById(R.id.imageView);
         _btnPlayer = findViewById(R.id.btnPlayer);
+        _frame = findViewById(R.id.frame);
 
         _progressBarUploadFile = findViewById(R.id.progressBarUploadFile);
 
-        frame = findViewById(R.id.frame);
-
-       /* if (listDeviceFragment == null) {
-            listDeviceFragment = new ListDeviceFragment(this);
-        }*/
 
         if(!udpClient.isConnected()){
             _btnDisconnect.setText("Connect");
@@ -222,11 +221,6 @@ public class MainActivity extends AppCompatActivity{
 
         _btnDisconnect.setOnClickListener(v -> {
             if(!udpClient.isConnected()){
-              /*  frame.setVisibility(View.VISIBLE);
-                FragmentManager fragmentManager = getSupportFragmentManager();
-                FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
-                fragmentTransaction.replace(R.id.frame, listDeviceFragment, "LIST_FRAGMENT_TAG");
-                fragmentTransaction.commit();*/
                 Intent intent = new Intent(this, ConnectionActivity.class);
                 startActivity(intent);
             }else{
@@ -240,18 +234,63 @@ public class MainActivity extends AppCompatActivity{
 
         setPermissions();
 
-        Intent intent = new Intent(this, RecordService.class);
-        bindService(intent, connection, BIND_AUTO_CREATE);
+        Intent intentRecordService = new Intent(this, RecordService.class);
+        bindService(intentRecordService, connection, BIND_AUTO_CREATE);
 
 
         _boot.addConnectionOpenListener(this::connectionOpen);
 
+
+        // Get intent, action and MIME type
+        Intent intent = getIntent();
+        String action = intent.getAction();
+        String type = intent.getType();
+
+        if (Intent.ACTION_SEND.equals(action) && type != null) {
+            if ("text/plain".equals(type)) {
+                handleSendText(intent); // Handle text being sent
+            } else if (type.startsWith("image/")) {
+                handleSendImage(intent); // Handle single image being sent
+            }
+        } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
+            if (type.startsWith("image/")) {
+                handleSendMultipleImages(intent); // Handle multiple images being sent
+            }
+        } else {
+            // Handle other intents, such as being started from the home screen
+        }
+
+    }
+
+    void handleSendText(Intent intent) {
+        String sharedText = intent.getStringExtra(Intent.EXTRA_TEXT);
+        if (sharedText != null) {
+            // Update UI to reflect text being shared
+        }
+    }
+
+    void handleSendImage(Intent intent) {
+        Uri imageUri = intent.getParcelableExtra(Intent.EXTRA_STREAM);
+        if (imageUri != null) {
+            SendImageFragment fragment = new SendImageFragment(this, imageUri);
+            FragmentManager fragmentManager = getSupportFragmentManager();
+            FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
+            fragmentTransaction.replace(R.id.frame, fragment);
+            fragmentTransaction.commit();
+        }
+    }
+
+    void handleSendMultipleImages(Intent intent) {
+        ArrayList<Uri> imageUris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+        if (imageUris != null) {
+            // Update UI to reflect multiple images being shared
+        }
     }
 
     public void connectionOpen(Host host){
         tcpClient.addICloseConnectionListener(this::closeConnection);
         tcpClient.addSetWallpaperListener(this::setWallPaper);
-        tcpClient.addISetProgressUploadFileListener(this::setProgressUploadFile);
+        tcpClient.addISetProgressListener(this::setProgressUploadFile);
         runOnUiThread(() -> {
             setViewListeners(true);
             startService(new Intent(MainActivity.this, ClipboardService.class));
@@ -310,29 +349,6 @@ public class MainActivity extends AppCompatActivity{
 
     public void setViewListeners(boolean isActive){
         if(isActive){
-            _seekBarVolume.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-                @Override
-                public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
-                    _txtVolume.setText("Volume: " + i);
-                    if(udpClient.isConnected()){
-                        //тут надо исправить
-                        String json = CommandHelper.toJson(i);
-                        udpClient.sendMessage(json, Command.changeVolume, host.localIP);
-                    }
-                }
-
-                @Override
-                public void onStartTrackingTouch(SeekBar seekBar) {
-
-                }
-
-                @Override
-                public void onStopTrackingTouch(SeekBar seekBar) {
-
-                }
-            });
-
-
             _btnPrint.setOnClickListener(v ->{
                 if(host != null){
                     Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
@@ -356,58 +372,8 @@ public class MainActivity extends AppCompatActivity{
             _btnPrint.setOnClickListener(null);
             _btnPlayer.setOnClickListener(null);
             _btnTouchPad.setOnClickListener(null);
-            _seekBarVolume.setOnSeekBarChangeListener(null);
         }
     }
-
-   /* private void scanCode() {
-        ScanOptions options = new ScanOptions();
-        options.setPrompt("Volume up to flash on");
-        options.setBeepEnabled(true);
-        options.setOrientationLocked(true);
-        options.setCaptureActivity(CaptureAct.class);
-        barLauncher.launch(options);
-    }
-*/
-/*
-    ActivityResultLauncher<ScanOptions> barLauncher = registerForActivityResult(new ScanContract(), result -> {
-        if(result.getContents() != null){
-            try {
-                ObjectMapper mapper = new ObjectMapper();
-                Map<String, Object> map = mapper.readValue(result.getContents(), Map.class);
-
-                String ip = map.get("localIP").toString();
-                int hostPort = Integer.parseInt(map.get("port").toString());
-                String macAddress = map.get("macAddress").toString();
-                String name = map.get("name").toString();
-
-
-                requestConnectHost(new Host(hostPort, ip, name, macAddress));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    });*/
-
-  /*  @Override
-    public void requestConnectHost(Host host) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            CompletableFuture.runAsync(() -> {
-                String json = CommandHelper.toJson(Settings.getDevice());
-                int answer = Integer.parseInt(udpClient.sendMessageWithReceive(json, Command.requestConnectDevice, host.localIP));
-                if(answer == 200){
-                    databaseHelper.insertHost(host);
-                }else{
-                   runOnUiThread(() ->
-                           Toast.makeText(
-                                   MainActivity.this,
-                                   "Конечный компьютер отверг подключение",
-                                   Toast.LENGTH_SHORT).show());
-                }
-            });
-        }
-    }*/
-
 
 
     public void closeConnection() {
@@ -426,15 +392,12 @@ public class MainActivity extends AppCompatActivity{
         runOnUiThread(() -> _imageView.setImageBitmap(bmp));
     }
 
-
-  /*  @Override
-    public void scanQR() {
-        scanCode();
-    }*/
-
     public void setProgressUploadFile(int progress) {
         runOnUiThread(() -> _progressBarUploadFile.setProgress(progress));
     }
+
+
+
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -444,16 +407,7 @@ public class MainActivity extends AppCompatActivity{
             case REQUEST_TAKE_DOCUMENT:
                 if(resultCode == RESULT_OK) {
                     Uri uri = data.getData();
-                    try {
-                        InputStream iStream = getContentResolver().openInputStream(uri);
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            long fileLength = getFileLength(uri);
-                            tcpClient.sendMessage(getFileName(uri), Command.saveFile, true);
-                            tcpClient.sendMessage(iStream, fileLength, false);
-                        }
-                    } catch (FileNotFoundException e) {
-                        e.printStackTrace();
-                    }
+                    _sender.sendImage(uri);
                 }
                 break;
             case RECORD_REQUEST_CODE:{
@@ -508,42 +462,19 @@ public class MainActivity extends AppCompatActivity{
         }
     }
 
-    @SuppressLint("Range")
-    public String getFileName(Uri uri) {
-        String result = null;
-        if (uri.getScheme().equals("content")) {
-            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-            try {
-                if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getString(cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME));
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-        if (result == null) {
-            result = uri.getPath();
-            int cut = result.lastIndexOf('/');
-            if (cut != -1) {
-                result = result.substring(cut + 1);
-            }
-        }
-        return result;
+    @Override
+    public void send(Uri uri) {
+        _sender.sendImage(uri);
+        _frame.setVisibility(View.GONE);
     }
 
-    @SuppressLint("Range")
-    public long getFileLength(Uri uri) {
-        long result = 0;
-        if (uri.getScheme().equals("content")) {
-            Cursor cursor = getContentResolver().query(uri, null, null, null, null);
-            try {
-                if (cursor != null && cursor.moveToFirst()) {
-                    result = cursor.getLong(cursor.getColumnIndex(OpenableColumns.SIZE));
-                }
-            } finally {
-                cursor.close();
-            }
-        }
-        return result;
+    @Override
+    public void send(ArrayList<Uri> uris) {
+
+    }
+
+    @Override
+    public void back() {
+        _frame.setVisibility(View.GONE);
     }
 }

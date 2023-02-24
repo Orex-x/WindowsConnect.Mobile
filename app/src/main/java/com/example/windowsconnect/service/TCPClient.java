@@ -7,12 +7,11 @@ import androidx.annotation.RequiresApi;
 import com.example.windowsconnect.interfaces.ITCPClient;
 import com.example.windowsconnect.interfaces.tcp.ICloseConnection;
 import com.example.windowsconnect.interfaces.tcp.IRemoveHostFromList;
-import com.example.windowsconnect.interfaces.tcp.ISetProgressUploadFile;
 import com.example.windowsconnect.interfaces.tcp.ISetWallpaper;
+import com.example.windowsconnect.interfaces.udp.ISetProgress;
 import com.example.windowsconnect.models.Command;
 import com.example.windowsconnect.supportListeners.SuperSupportListener;
 import com.example.windowsconnect.supportListeners.TcpClientListenerSupport;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -21,7 +20,6 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 
 public class TCPClient {
 
@@ -50,8 +48,8 @@ public class TCPClient {
         superSupportListener.iRemoveHostFromLists.add(l);
     }
 
-    public void addISetProgressUploadFileListener(ISetProgressUploadFile l){
-        superSupportListener.iSetProgressUploadFiles.add(l);
+    public void addISetProgressListener(ISetProgress l){
+        superSupportListener.iSetProgresses.add(l);
     }
 
     private Socket _clientSocket = null;
@@ -188,10 +186,10 @@ public class TCPClient {
                 long count = 0;
                 while ((len = stream.read(buffer)) != -1) {
                     _outputStream.write(buffer, 0, len);
-                    listeners.setProgressUploadFile((int)getProgress(length, count));
+                    superSupportListener.set((int)getProgress(length, count));
                     count += len;
                 }
-                listeners.setProgressUploadFile(0);
+                superSupportListener.set(0);
             } catch (IOException e) {
                 e.printStackTrace();
             }
